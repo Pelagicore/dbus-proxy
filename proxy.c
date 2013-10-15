@@ -13,6 +13,7 @@ DBusGConnection *master_conn = NULL;
 gboolean verbose = FALSE;
 gchar *address = NULL;
 gchar **filters = NULL;
+DBusBusType bus = DBUS_BUS_SESSION;
 
 DBusHandlerResult filter_cb(DBusConnection *conn, DBusMessage *msg, void *user_data) {
     // Data arriving from client
@@ -172,7 +173,7 @@ void new_connection_cb(DBusServer *server, DBusConnection *conn, void *data) {
     }
 
     // Init master connection
-    master_conn = dbus_g_bus_get(DBUS_BUS_SESSION, &error);
+    master_conn = dbus_g_bus_get(bus, &error);
     if (!master_conn) {
         g_printerr("Failed to open connection to session bus: %s\n", error->message);
         g_clear_error(&error);
@@ -215,15 +216,25 @@ int main(int argc, char *argv[]) {
     gchar * content = "*;*;*;*";
 
     // Extract address
-    if (argc < 2) {
-        g_print("Must give socket path and optionaly config as parameter.\n");
+    if (argc < 3) {
+        g_print("Must give socket path, bus type, and optionaly config as parameter.\n");
         exit(1);
     }
 
     address = g_strconcat("unix:path=", argv[1], NULL);
+    if (strcmp(argv[2], "system") == 0) {
+        bus = DBUS_BUS_SYSTEM;
+    }
+    else if (strcmp(argv[2], "session") == 0) {
+        bus = DBUS_BUS_SESSION;
+    }
+    else {
+        g_print("Must give bus type as second argument (either session or system).\n");
+        exit(1);
+    }
 
-    if (argc > 2) {
-        g_file_get_contents(argv[2], &content, NULL, NULL);
+    if (argc > 3) {
+        g_file_get_contents(argv[3], &content, NULL, NULL);
     }
     filters = g_strsplit(content,"\n",0);
 
