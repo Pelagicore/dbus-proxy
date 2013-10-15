@@ -175,7 +175,7 @@ void new_connection_cb(DBusServer *server, DBusConnection *conn, void *data) {
     // Init master connection
     master_conn = dbus_g_bus_get(bus, &error);
     if (!master_conn) {
-        g_printerr("Failed to open connection to session bus: %s\n", error->message);
+        g_printerr("Failed to open connection to bus: %s\n", error->message);
         g_clear_error(&error);
         exit(1);
     }
