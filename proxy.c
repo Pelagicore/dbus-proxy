@@ -234,6 +234,10 @@ int main(int argc, char *argv[]) {
     }
 
     if (argc > 3) {
+        if (!g_file_test(argv[3], G_FILE_TEST_EXISTS)) {
+		g_print ("Configuration file '%s' does not exist\n", argv[3]);
+		exit (1);
+	}
         g_file_get_contents(argv[3], &content, NULL, NULL);
     }
     filters = g_strsplit(content,"\n",0);
