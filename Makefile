@@ -9,4 +9,4 @@ clean:
 	rm -f arkose-dbus-proxy
 
 install: arkose-dbus-proxy
-	install -D -m 755 arkose-dbus-proxy $(DESTDIR)$(PREFIX)/bin/arkose-dbus-proxy
+	install -D -m 755 arkose-dbus-proxy $(DESTDIR)$(PREFIX)/bin/dbus-proxy
