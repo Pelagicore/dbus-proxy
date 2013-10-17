@@ -1,9 +1,11 @@
 Pelagicorized version of arkose-dbus-proxy
-
+------------------------------------------
 For ubuntu, you'll want the libdbus-glib-1-dev package installed
 
+Running
+=======
 To run the proxy, make it, and then try:
-./arkose-dbus-proxy /tmp/my_proxy_socket bus-type profiles/pelagicore.conf
+./arkose-dbus-proxy /tmp/my_proxy_socket bus-type profiles/pelagicore.json
                       ^- Socket to create for communication
                                           ^- "session" or "system"
                                                    ^- Our config
@@ -12,3 +14,14 @@ You can then interact with the socket via, for instance, d-feet. You'll notice
 that you can read introspection data since the org.freedesktop namespace is
 allowed, and you can also interact with gedit (since this is also allowed in
 the config). You can't do much else.
+
+Configuration files
+===================
+The Pelagicorized version of the Arkose D-Bus proxy is configured using JSON
+files (as opposed to the pure text files used in the original program. The 
+idea is that the Application Manager and the Pelagicorized D-Bus proxy should
+be able to share configuration files.
+
+The content of the JSON file can vary as long as the "dbus-proxy-config"
+attribute holds a JSON array of JSON objects. example_conf.json shows an
+example of how the JSON configuration files should be structured.
