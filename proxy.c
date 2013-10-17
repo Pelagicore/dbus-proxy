@@ -3,6 +3,7 @@
 #include <dbus/dbus.h>
 #include <dbus/dbus-glib.h>
 #include <dbus/dbus-glib-lowlevel.h>
+#include <jansson.h>
 
 /* the connection to dbus_srv from a local client, or NULL */
 DBusConnection *dbus_conn = NULL;
@@ -12,8 +13,8 @@ DBusGConnection *master_conn = NULL;
 
 gboolean verbose = FALSE;
 gchar *address = NULL;
-gchar **filters = NULL;
 DBusBusType bus = DBUS_BUS_SESSION;
+json_t *json_filters = NULL;
 
 DBusHandlerResult filter_cb(DBusConnection *conn, DBusMessage *msg, void *user_data) {
     // Data arriving from client
@@ -84,26 +85,53 @@ out:
     return retval;
 }
 
+gboolean match_rule(const json_t* rule, const char *entry, const char *comparison) {
+    json_t *json_entry;
+    gchar *string;
+
+    json_entry = json_object_get(rule, entry);
+    if (!json_is_string(json_entry)) {
+        return FALSE;
+    }
+    string = (gchar*) json_string_value(json_entry);
+    if (strcmp(string, "") != 0 && g_pattern_match_simple(string, comparison)) {
+	return TRUE;
+    }
+    else {
+	return FALSE;
+    }
+}
+
 gboolean is_allowed(const char *direction, const char *interface, const char *path, const char *member) {
-    gchar *rule = "";
-    gint index = 0;
-    gchar *query = "";
+    size_t i;
+    json_t *rule;
+    gboolean direction_ok, interface_ok, object_path_ok, method_ok;
 
-    query = g_strconcat(direction, ";", interface, ";", path, ";", member, NULL);
+    for (i = 0; i < json_array_size(json_filters); i++) {
+	direction_ok, interface_ok, object_path_ok, method_ok = FALSE;
 
-    while (1) {
-        rule=filters[index];
-        if (rule == NULL) {
-            break;
+	// Get the JSON array containing the JSON objects
+	rule = json_array_get(json_filters, i);
+        if (rule == NULL || !json_is_object(rule)) {
+	    json_decref(rule);
+	    break;
         }
 
-        if (strcmp(rule, "") != 0) {
-            if (g_pattern_match_simple(rule, query)) {
-                return TRUE;
-            }
-        }
+	direction_ok = match_rule(rule, "direction", direction);
+        interface_ok = match_rule(rule, "interface", interface);
+        object_path_ok = match_rule(rule, "object-path", path);
+        method_ok = match_rule(rule, "method", member);
 
-        index = index + 1;
+	// All entries matched for the rule
+	if (direction_ok && interface_ok && object_path_ok && method_ok) {
+	    return TRUE;
+	}
+
+	// Since direction seems to be a common source of errors, the following
+	// printout is added as a helper to developer
+	if (!direction_ok && interface_ok && object_path_ok && method_ok) {
+	    g_print("Direction '%s' does not match but everything else does\n", direction);
+	}
     }
 
     return FALSE;
@@ -210,10 +238,35 @@ void start_bus() {
     dbus_server_setup_with_g_main(dbus_srv, NULL);
 }
 
+int parse_json_file(const char *path) {
+    size_t i;
+    json_error_t error;
+    json_t *root, *config, *rule;
+
+    // Get root JSON object
+    root = json_load_file(path, 0, &error);
+
+    if(!root) {
+        g_printerr("error: on line %d: %s\n", error.line, error.text);
+        return 1;
+    }
+
+    // Get array
+    config = json_object_get(root, "dbus-proxy-config");
+    
+    if(!json_is_array(config)) {
+        g_printerr("error: config is not an array\n");
+	json_decref(config);
+	return 1;
+    }
+    json_filters = config;
+
+    return 0;
+}
+
 int main(int argc, char *argv[]) {
     GMainLoop *mainloop = NULL;
     GError *error = NULL;
-    gchar * content = "*;*;*;*";
 
     // Extract address
     if (argc < 3) {
@@ -238,10 +291,13 @@ int main(int argc, char *argv[]) {
 		g_print ("Configuration file '%s' does not exist\n", argv[3]);
 		exit (1);
 	}
-        g_file_get_contents(argv[3], &content, NULL, NULL);
-    }
-    filters = g_strsplit(content,"\n",0);
 
+	// Parse JSON
+	if (parse_json_file(argv[3]) == 1){
+	    g_print("Something wrong with JSON file. Exiting...\n");
+	    exit(1);
+	}
+    }
 
     // Start listening
     g_type_init();

@@ -3,7 +3,7 @@ PREFIX ?= /usr
 all: arkose-dbus-proxy
 
 arkose-dbus-proxy: proxy.c
-	$(CC) -o $@ $< `pkg-config --cflags --libs dbus-1 dbus-glib-1`
+	$(CC) -o $@ $< `pkg-config --cflags --libs dbus-1 dbus-glib-1 jansson`
 
 clean:
 	rm -f arkose-dbus-proxy

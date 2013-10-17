@@ -1,0 +1,28 @@
+{
+    "some-ignored-attribute": "this-is-ignored",
+    "dbus-proxy-config": [
+    		{
+		    "direction": "outgoing",
+		    "interface": "org.freedesktop.DBus.Introspectable",
+		    "object-path": "/org/gnome/gedit",
+		    "method": "Introspect"
+		 },
+                {
+                    "direction": "outgoing",
+                    "interface": "org.freedesktop.DBus.Introspectable",
+                    "object-path": "/com/canonical/menu/*",
+                    "method": "Introspect"
+                 },
+		 {
+		     "direction": "outgoing",
+		     "interface": "org.freedesktop.DBus.Properties",
+		     "object-path": "/org/gnome/gedit",
+		     "method": "GetAll"
+		  },
+                 {
+                    "direction": "outgoing",
+                    "interface": "org.freedesktop.DBus.Properties",
+                    "object-path": "/com/canonical/menu/*",
+                    "method": "Set"
+		  }]
+}
