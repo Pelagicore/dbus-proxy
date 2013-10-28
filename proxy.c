@@ -238,10 +238,13 @@ void start_bus() {
     dbus_server_setup_with_g_main(dbus_srv, NULL);
 }
 
-int parse_json_file(const char *path) {
-    size_t i;
-    json_error_t error;
-    json_t *root, *config, *rule;
+int parse_json_file(const char *path, const char *section) {
+    size_t        i;
+    json_error_t  error;
+    json_t       *root, *config, *rule;
+    char         *full_section = calloc (sizeof (char), 30);
+
+    snprintf (full_section, 30, "dbus-proxy-config-%s", section);
 
     // Get root JSON object
     root = json_load_file(path, 0, &error);
@@ -252,10 +255,11 @@ int parse_json_file(const char *path) {
     }
 
     // Get array
-    config = json_object_get(root, "dbus-proxy-config");
+    config = json_object_get(root, full_section);
     
     if(!json_is_array(config)) {
-        g_printerr("error: config is not an array\n");
+        g_printerr("error: %s is not present in %s, or not an array. "
+	           "Fix your config\n", full_section, path);
 	json_decref(config);
 	return 1;
     }
@@ -269,8 +273,8 @@ int main(int argc, char *argv[]) {
     GError *error = NULL;
 
     // Extract address
-    if (argc < 3) {
-        g_print("Must give socket path, bus type, and optionaly config as parameter.\n");
+    if (argc < 4) {
+        g_print("Must give socket path, bus type, and config as parameter.\n");
         exit(1);
     }
 
@@ -286,17 +290,15 @@ int main(int argc, char *argv[]) {
         exit(1);
     }
 
-    if (argc > 3) {
-        if (!g_file_test(argv[3], G_FILE_TEST_EXISTS)) {
-		g_print ("Configuration file '%s' does not exist\n", argv[3]);
-		exit (1);
-	}
-
-	// Parse JSON
-	if (parse_json_file(argv[3]) == 1){
-	    g_print("Something wrong with JSON file. Exiting...\n");
-	    exit(1);
-	}
+    if (!g_file_test(argv[3], G_FILE_TEST_EXISTS)) {
+        g_print ("Configuration file '%s' does not exist\n", argv[3]);
+        exit (1);
+    }
+    
+    // Parse JSON
+    if (parse_json_file(argv[3], argv[2]) == 1){
+        g_print("Something wrong with JSON file. Exiting...\n");
+        exit(1);
     }
 
     // Start listening
