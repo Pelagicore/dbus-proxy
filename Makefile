@@ -1,12 +1,12 @@
 PREFIX ?= /usr
 
-all: arkose-dbus-proxy
+all: dbus-proxy
 
-arkose-dbus-proxy: proxy.c
+dbus-proxy: proxy.c
 	$(CC) -o $@ $< `pkg-config --cflags --libs dbus-1 dbus-glib-1 jansson`
 
 clean:
-	rm -f arkose-dbus-proxy
+	rm -f dbus-proxy
 
-install: arkose-dbus-proxy
-	install -D -m 755 arkose-dbus-proxy $(DESTDIR)$(PREFIX)/bin/dbus-proxy
+install: dbus-proxy
+	install -D -m 755 dbus-proxy $(DESTDIR)$(PREFIX)/bin/dbus-proxy
