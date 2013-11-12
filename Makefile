@@ -1,5 +1,7 @@
 PREFIX ?= /usr
 
+.PHONY: doc
+
 all: dbus-proxy
 
 dbus-proxy: proxy.c
@@ -10,3 +12,7 @@ clean:
 
 install: dbus-proxy
 	install -D -m 755 dbus-proxy $(DESTDIR)$(PREFIX)/bin/dbus-proxy
+
+doc:
+	doxygen Doxyfile
+	cd doc/latex ; make

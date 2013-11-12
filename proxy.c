@@ -27,15 +27,22 @@
 #include <dbus/dbus-glib-lowlevel.h>
 #include <jansson.h>
 
-/* the connection to dbus_srv from a local client, or NULL */
+/*! the connection to dbus_srv from a local client, or NULL */
 DBusConnection  *dbus_conn    = NULL;
 
-/* the connection to the real server */
+/*! the connection to the real server */
 DBusGConnection *master_conn  = NULL;
 
+/*! JSON filter rules read from file */
 json_t          *json_filters = NULL;
+
+/*! D-Bus address to listen on */
 gchar           *address      = NULL;
+
+/*! Enable this for debus output */
 gboolean         verbose      = FALSE;
+
+/*! Bus type to create */
 DBusBusType      bus          = DBUS_BUS_SESSION;
 
 /*! \brief Filter for outgoing D-Bus requests
@@ -309,7 +316,7 @@ dbus_bool_t allow_all_connections (DBusConnection *conn,
 	return TRUE;
 }
 
-/*! \Brief Accept a new connection
+/*! \brief Accept a new connection
  *
  * This is called with each new connection. The process will fork off a new
  * thread in which filter rules are applied and the incoming messages are
@@ -381,11 +388,6 @@ void new_connection_cb (DBusServer *server, DBusConnection *conn, void *data) {
 	dbus_conn = conn;
 }
 
-/*! \brief Listen for new connections
- *
- * Listen for new connections, and once a new connection is received send this
- * over to the new_connection_cb () callback function
- */
 void start_bus() {
 	DBusServer *dbus_srv;
 	DBusError   error;
