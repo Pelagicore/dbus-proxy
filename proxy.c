@@ -396,7 +396,7 @@ void start_bus() {
 
 	dbus_srv = dbus_server_listen (address, &error);
 	if (dbus_srv == NULL) {
-		g_printerr("Cannot listen on\n");
+        g_printerr("Cannot listen on %s\n", address);
 		exit(1);
 	}
 
@@ -410,14 +410,13 @@ void start_bus() {
 /*! \brief Read filter rules from JSON
  *
  * Populate the json_filters global variable with the filter rules read from
- * the JSON configuration file
+ * the JSON configuration which comes in via stdin
  *
- * \param path    The path to the file containing the filter rules
- * \param section The section in the JSON file to use
+ * \param section The section in the JSON config to use
  * \return 0      Upon success
  * \return 1      Upon failure
  */
-int parse_json_file (const char *path, const char *section) {
+int parse_json_from_stdin (const char *section) {
 	size_t        i;
 	json_error_t  error;
 	json_t       *root, *config, *rule;
@@ -427,7 +426,7 @@ int parse_json_file (const char *path, const char *section) {
 	snprintf (full_section, 30, "dbus-proxy-config-%s", section);
 
 	/* Get root JSON object */
-	root = json_load_file (path, 0, &error);
+	root = json_loadf (stdin, JSON_DISABLE_EOF_CHECK, &error);
 
 	if (!root) {
 		g_printerr ("error: on line %d: %s\n", error.line, error.text);
@@ -439,12 +438,13 @@ int parse_json_file (const char *path, const char *section) {
 	config = json_object_get (root, full_section);
 
 	if (!json_is_array(config)) {
-		g_printerr("error: %s is not present in %s, or not an array. "
-				"Fix your config\n", full_section, path);
+		g_printerr("error: %s is not present in config, or not an array. "
+				"Fix your config\n", full_section);
 		json_decref (config);
 		retval = 1;
 		goto cleanup_parse_json;
 	}
+
 	json_filters = config;
 
 cleanup_parse_json:
@@ -456,9 +456,8 @@ int main(int argc, char *argv[]) {
 	GError    *error    = NULL;
 
 	/* Extract address */
-	if (argc < 4) {
-		g_print("Must give socket path, bus type, "
-		        "and config as parameter.\n");
+	if (argc < 3) {
+		g_print("Usage: dbus-proxy address session|system\n       waits for JSON conf at stdin.\n");
 		exit(1);
 	}
 
@@ -472,13 +471,8 @@ int main(int argc, char *argv[]) {
 		exit (1);
 	}
 
-	if (!g_file_test (argv[3], G_FILE_TEST_EXISTS)) {
-		g_print ("Configuration file '%s' does not exist\n", argv[3]);
-		exit (1);
-	}
-
 	/* Parse JSON */
-	if (parse_json_file (argv[3], argv[2]) == 1){
+	if (parse_json_from_stdin (argv[2]) == 1){
 		g_print ("Something wrong with JSON file. Exiting...\n");
 		exit (1);
 	}
