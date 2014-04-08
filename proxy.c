@@ -396,7 +396,7 @@ void start_bus() {
 
 	dbus_srv = dbus_server_listen (address, &error);
 	if (dbus_srv == NULL) {
-        g_printerr("Cannot listen on %s\n", address);
+		g_printerr("Cannot listen on %s\n", address);
 		exit(1);
 	}
 
