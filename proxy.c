@@ -422,32 +422,47 @@ int parse_json_from_stdin (const char *section) {
 	json_t       *root, *config, *rule;
 	char         *full_section = calloc (sizeof (char), 30);
 	int           retval = 0;
+	int config_found = 0;
 
 	snprintf (full_section, 30, "dbus-proxy-config-%s", section);
 
-	/* Get root JSON object */
-	root = json_loadf (stdin, JSON_DISABLE_EOF_CHECK, &error);
+	/* Allow multiple configuration snippets, each as it's own root obj */
+	do {
 
-	if (!root) {
-		g_printerr ("error: on line %d: %s\n", error.line, error.text);
-		retval = 1;
-		goto cleanup_parse_json;
-	}
+		/* Get root JSON object */
+		root = json_loadf (stdin, JSON_DISABLE_EOF_CHECK, &error);
 
-	// Get array
-	config = json_object_get (root, full_section);
+		if (!root) {
+			/* If no config was found this is an error, otherwise it's normal */
+			if (!config_found) {
+				g_printerr ("error: on line %d: %s\n", error.line, error.text);
+				retval = 1;
+			}
+			break;
+		}
 
-	if (!json_is_array(config)) {
-		g_printerr("error: %s is not present in config, or not an array. "
-				"Fix your config\n", full_section);
-		json_decref (config);
-		retval = 1;
-		goto cleanup_parse_json;
-	}
+		/* We have atleast one root object in file */
+		config_found = 1;
 
-	json_filters = config;
+		// Get array
+		config = json_object_get (root, full_section);
 
-cleanup_parse_json:
+		if (!json_is_array(config)) {
+			g_printerr("error: %s is not present in config, or not an array. "
+					"Fix your config\n", full_section);
+			json_decref (config);
+			retval = 1;
+			break;
+		}
+		if (NULL == json_filters) {
+			json_filters = config;
+		} else {
+			if (0 != json_array_extend(json_filters, config)){
+				g_printerr("Error extending config array\n");
+			}
+		}
+	} while (root);
+
 	return retval;
 }
 
