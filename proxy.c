@@ -424,7 +424,7 @@ int parse_json_from_stdin (const char *section) {
 	int           retval = 0;
 	int config_found = 0;
 
-	snprintf (full_section, 30, "dbus-proxy-config-%s", section);
+	snprintf (full_section, 30, "dbus-gateway-config-%s", section);
 
 	/* Allow multiple configuration snippets, each as it's own root obj */
 	do {
@@ -472,7 +472,8 @@ int main(int argc, char *argv[]) {
 
 	/* Extract address */
 	if (argc < 3) {
-		g_print("Usage: dbus-proxy address session|system\n       waits for JSON conf at stdin.\n");
+		g_print("Usage: dbus-proxy address session|system\n"
+		        "waits for JSON conf at stdin.\n");
 		exit(1);
 	}
 
