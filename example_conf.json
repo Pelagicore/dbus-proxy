@@ -1,7 +1,7 @@
 {
     "some-ignored-attribute": "this-is-ignored",
-    "dbus-proxy-config-session": [],
-    "dbus-proxy-config-system": [
+    "dbus-gateway-config-session": [],
+    "dbus-gateway-config-system": [
     		{
 		    "direction": "outgoing",
 		    "interface": "org.freedesktop.DBus.Introspectable",
