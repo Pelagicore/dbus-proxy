@@ -5,7 +5,7 @@ For ubuntu, you'll want the libdbus-glib-1-dev package installed
 Running
 =======
 To run the proxy, make it, and then try:
-./dbus-proxy /tmp/my_proxy_socket bus-type < profiles/pelagicore.json
+./dbus-proxy /tmp/my_proxy_socket bus-type < example_conf.json
                       ^- Socket to create for communication
                                           ^- "session" or "system"
                                                    ^- Our config
