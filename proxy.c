@@ -24,6 +24,7 @@
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <sys/wait.h>
 #include <stdlib.h>
 #include <dbus/dbus.h>
@@ -50,6 +51,9 @@ gboolean         verbose      = FALSE;
 
 /*! Bus type to create */
 DBusBusType      bus          = DBUS_BUS_SESSION;
+
+/*! List of connections that are to be ignored */
+GList           *eavesdropping_conns = NULL;
 
 void handle_sigchld(int sig) {
   while (waitpid((pid_t)(-1), 0, WNOHANG) > 0) {}
@@ -292,7 +296,20 @@ DBusHandlerResult master_filter_cb (DBusConnection *conn,
 	    strcmp(dbus_message_get_interface(msg),
 	           "org.freedesktop.DBus")  == 0)
 	{
+		if (is_incoming_eavesdropping(msg))
+		{
+			eavesdropping_conns =
+			    g_list_append (eavesdropping_conns,
+					   (gpointer) dbus_message_get_sender(msg));
+		}
+
 		dbus_connection_send(dbus_conn, msg, &serial);
+	} else if (is_conn_known_eavesdropper (dbus_bus_get_unique_name(conn)))
+	{
+		if (verbose) {
+			g_print ("'%s' is an eavesdropping connection, let it go...\n",
+				 dbus_bus_get_unique_name(conn));
+		}
 	} else if (is_allowed("incoming",
 	           dbus_message_get_interface (msg),
 	           dbus_message_get_path      (msg),
@@ -325,6 +342,71 @@ dbus_bool_t allow_all_connections (DBusConnection *conn,
                                    void           *data)
 {
 	return TRUE;
+}
+
+/*! \brief Test if a new connection has signaled that it wants to eavesdrop
+ *
+ * If a new connection is eavesdropping (for instance like the dbus-monitor)
+ * the D-Bus proxy will keep track of it and make sure that it does not
+ * hijack the messages.
+ *
+ * \param msg The D-Bus message sent to org.freedesktop.DBus
+ * \return TRUE If connection wants to eavesdrop
+ * \return FALSE If connection does not want to eavesdrop
+ */
+gboolean is_incoming_eavesdropping (DBusMessage *msg)
+{
+	gboolean is_eavesdropping = FALSE;
+
+	/* Look for AddMatch and eavesdrop=true in message */
+	if (dbus_message_get_member(msg) != NULL &&
+	    strcmp(dbus_message_get_member(msg), "AddMatch") == 0)
+        {
+		const char *msg_arguments;
+		dbus_message_get_args (msg,
+				       NULL,
+				       DBUS_TYPE_STRING,
+				       &msg_arguments);
+
+		if (strstr(msg_arguments, "eavesdrop=true") != NULL)
+		{
+			is_eavesdropping = TRUE;
+			if (verbose)
+			{
+				g_print ("'%s' AddMatch-args: \"%s\"\n",
+					 dbus_message_get_sender(msg),
+					 msg_arguments);
+			}
+		}
+        }
+	return is_eavesdropping;
+}
+
+/*! \brief Test if existing connection is an eavesdropping connection
+ *
+ * Tests if the connection passed as argument is in the list of known
+ * eavesdropping connections.
+ *
+ * \param unique_name The unique name of the D-Bus connection to test
+ * \return TRUE Connection is an eavesdropping connection
+ * \return FALSE Connection is not an eavesdropping connection
+ */
+gboolean is_conn_known_eavesdropper (const char *unique_name)
+{
+	gboolean found = FALSE;
+	GList *iter = eavesdropping_conns;
+
+	while (iter != NULL)
+	{
+		if (strcmp(unique_name, (char*) iter->data) == 0)
+		{
+			found = TRUE;
+			break;
+		}
+		iter = iter->next;
+	}
+
+	return found;
 }
 
 /*! \brief Accept a new connection
