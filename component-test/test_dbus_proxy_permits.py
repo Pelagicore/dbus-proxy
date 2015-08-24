@@ -31,7 +31,6 @@ class TestDBusProxyPermits(object):
 
         Configuration to use: conf_allow_all.json
     """
-    @pytest.mark.skipif(1, reason="Takes some time to execute")
     def test_dbus_send_command(self):
         from os import environ
         from subprocess import Popen, PIPE
