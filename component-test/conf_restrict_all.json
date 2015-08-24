@@ -1,0 +1,5 @@
+{
+    "some-ignored-attribute": "this-is-ignored",
+    "dbus-gateway-config-session": [],
+    "dbus-gateway-config-system": []
+}
