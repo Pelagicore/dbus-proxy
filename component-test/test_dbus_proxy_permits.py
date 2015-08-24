@@ -4,8 +4,23 @@ import pytest
     Tests various aspects of the D-Bus proxy. Depending on the test case, the
     test may act as a service running outside of the container or an app running
     on the inside.
+
+    The tests in this module requries that the D-Bus proxy is started with a
+    permit all configuration for the session bus. E.g.:
+
+    {
+        "some-ignored-attribute": "this-is-ignored",
+        "dbus-gateway-config-session": [
+                 {
+                    "direction": "*",
+                    "interface": "*",
+                    "object-path": "*",
+                    "method": "*"
+		  }],
+        "dbus-gateway-config-system": []
+    }
 """
-class TestDBusProxy(object):
+class TestDBusProxyPermits(object):
     """
         According to https://atlassian.pelagicore.net/jira/browse/TAC-58, the
         D-Bus proxy had fd leaks and zombie processes making it crash after 544
@@ -16,7 +31,7 @@ class TestDBusProxy(object):
 
         Configuration to use: conf_allow_all.json
     """
-#    @pytest.mark.skipif(1, reason="Takes some time to execute")
+    @pytest.mark.skipif(1, reason="Takes some time to execute")
     def test_dbus_send_command(self):
         from os import environ
         from subprocess import Popen, PIPE
