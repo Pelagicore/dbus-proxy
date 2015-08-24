@@ -21,6 +21,10 @@
 
 
 #include "proxy.h"
+#include <signal.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <sys/wait.h>
 #include <stdlib.h>
 #include <dbus/dbus.h>
 #include <dbus/dbus-glib.h>
@@ -33,6 +37,8 @@ DBusConnection  *dbus_conn    = NULL;
 /*! the connection to the real server */
 DBusGConnection *master_conn  = NULL;
 
+DBusServer *dbus_srv = NULL;
+
 /*! JSON filter rules read from file */
 json_t          *json_filters = NULL;
 
@@ -44,6 +50,11 @@ gboolean         verbose      = FALSE;
 
 /*! Bus type to create */
 DBusBusType      bus          = DBUS_BUS_SESSION;
+
+void handle_sigchld(int sig) {
+  while (waitpid((pid_t)(-1), 0, WNOHANG) > 0) {}
+}
+
 
 /*! \brief Filter for outgoing D-Bus requests
  *
@@ -389,11 +400,14 @@ void new_connection_cb (DBusServer *server, DBusConnection *conn, void *data) {
 }
 
 void start_bus() {
-	DBusServer *dbus_srv;
 	DBusError   error;
 
 	dbus_error_init (&error);
 
+	if (dbus_srv != NULL) {
+		dbus_server_disconnect(dbus_srv);
+		dbus_server_unref(dbus_srv);
+	}
 	dbus_srv = dbus_server_listen (address, &error);
 	if (dbus_srv == NULL) {
 		g_printerr("Cannot listen on %s\n", address);
@@ -491,6 +505,15 @@ int main(int argc, char *argv[]) {
 	if (parse_json_from_stdin (argv[2]) == 1){
 		g_print ("Something wrong with JSON file. Exiting...\n");
 		exit (1);
+	}
+
+	struct sigaction sa;
+	sa.sa_handler = &handle_sigchld;
+	sigemptyset(&sa.sa_mask);
+	sa.sa_flags = SA_RESTART | SA_NOCLDSTOP;
+	if (sigaction(SIGCHLD, &sa, 0) == -1) {
+		perror(0);
+		exit(1);
 	}
 
 	/* Start listening */
