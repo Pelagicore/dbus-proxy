@@ -1,0 +1,11 @@
+{
+    "some-ignored-attribute": "this-is-ignored",
+    "dbus-gateway-config-session": [
+                 {
+                    "direction": "*",
+                    "interface": "*",
+                    "object-path": "*",
+                    "method": "*"
+		  }],
+    "dbus-gateway-config-system": []
+}
