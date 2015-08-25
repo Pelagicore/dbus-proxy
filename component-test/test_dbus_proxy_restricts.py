@@ -9,8 +9,8 @@ INSIDE_SOCKET = "unix:path=/tmp/dbus_proxy_inside_socket"
 
 """
     Tests various aspects of the D-Bus proxy. Depending on the test case, the
-    test may act as a service running outside of the container or an app running
-    on the inside.
+    test may act as a service running outside of the container or an app
+    running on the inside.
 
     The tests in this module requries that the D-Bus proxy is started with a
     restrict all configuration for the session bus. E.g.:
@@ -22,22 +22,24 @@ INSIDE_SOCKET = "unix:path=/tmp/dbus_proxy_inside_socket"
     }
 
 """
+
+
 class TestDBusProxyRestricts(object):
     """
         When configured for allowing eavesdropping, eavesdropping D-Bus
         connections such as the dbus-monitor interrupts the messages passed
-        between outside services (i.e. servers and clients both residing outside
-        of the container).
+        between outside services (i.e. servers and clients both residing
+        outside of the container).
 
         The expected outcome of this test case is that the message sent from
         the dbus-send command should result in a proper reply even though the
         D-Bus proxy is set to restrict all (because the D-Bus proxy should not
-        intercept messages sent between clients and servers both running outside
-        of the container.
+        intercept messages sent between clients and servers both running
+        outside of the container.
 
         The problem only exists when D-Bus is started with eavesdropping
-        allowed. If the system is not configured for allowing eavesdropping, the
-        test will result in a false pass.
+        allowed. If the system is not configured for allowing eavesdropping,
+        the test will result in a false pass.
     """
     def test_proxy_hogs_external_messages_when_monitor_is_running(self):
         from os import environ
@@ -78,8 +80,6 @@ class TestDBusProxyRestricts(object):
 
         assert "Hello" in captured_stdout
 
-
-
     """
         This test does not behave as it should. The proxy rejects the
         introspection message but lets the HelloWorld-call through. The
@@ -98,6 +98,7 @@ class TestDBusProxyRestricts(object):
                                                OUTSIDE_CONNECTION_NAME)
         inside_object.call_hello_world()
         assert inside_object.get_response()[0] == "Hello"
+
 
 class DBusRemoteObjectHelper(object):
     def __init__(self, bus, connection_name):

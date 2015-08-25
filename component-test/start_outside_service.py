@@ -9,6 +9,8 @@ import dbus.service
     for testing purposes and represents a service running
     outside of a container.
 """
+
+
 class SomeObject(dbus.service.Object):
     def __init__(self):
         # Connect to the D-Bus session bus running outside the container

@@ -2,8 +2,8 @@ import pytest
 
 """
     Tests various aspects of the D-Bus proxy. Depending on the test case, the
-    test may act as a service running outside of the container or an app running
-    on the inside.
+    test may act as a service running outside of the container or an app
+    running on the inside.
 
     The tests in this module requries that the D-Bus proxy is started with a
     permit all configuration for the session bus. E.g.:
@@ -16,10 +16,12 @@ import pytest
                     "interface": "*",
                     "object-path": "*",
                     "method": "*"
-		  }],
+                 }],
         "dbus-gateway-config-system": []
     }
 """
+
+
 class TestDBusProxyPermits(object):
     """
         According to https://atlassian.pelagicore.net/jira/browse/TAC-58, the
@@ -45,6 +47,8 @@ class TestDBusProxyPermits(object):
 
         environment = environ.copy()
         for _x in range(0, 1024):
-            dbus_send_process = Popen(DBUS_SEND_CMD, env=environment, stdout=PIPE)
+            dbus_send_process = Popen(DBUS_SEND_CMD,
+                                      env=environment,
+                                      stdout=PIPE)
             captured_stdout = dbus_send_process.communicate()[0]
             assert "Hello" in captured_stdout
