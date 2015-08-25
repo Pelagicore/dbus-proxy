@@ -1,3 +1,9 @@
+Installing pytest
+=================
+Tests are exectued using pytest.
+$ sudo apt-get install pip
+$ sudo pip install pytest
+
 Test setup
 ==========
 The tests requires that:
@@ -9,12 +15,18 @@ $ dbus-daemon --session --nofork --address=unix:path=/tmp/dbus_proxy_outside_soc
 2. The outside service is running
 $ cd component-test && ./start_outside_service.py
 
-3. The D-Bus proxy is running and listening on /tmp/dbus_proxy_inside_socket
-$ cd component-test
-$ DBUS_SESSION_BUS_ADDRESS="unix:path=/tmp/dbus_proxy_outside_socket" ../dbus-proxy /tmp/dbus_proxy_inside_socket session < conf_allow_all.json
-
-
 Running the tests
 =================
-Tests are exectued using pytest:
-$ cd component-test && py.test -vvv test_dbus_proxy.py
+The two pytest test modules (test_dbus_proxy_permits.py and test_dbus_proxy_restricts.py) needs to be run with
+different D-Bus proxy configurations. Hence, they need to be executed individually with the D-Bus proxy restarted
+between each execution.
+
+To run test_dbus_proxy_permits.py:
+$ cd component-test
+$ DBUS_SESSION_BUS_ADDRESS="unix:path=/tmp/dbus_proxy_outside_socket" ../dbus-proxy /tmp/dbus_proxy_inside_socket session < conf_allow_all.json
+$ cd component-test && py.test -vvv test_dbus_proxy_permits.py
+
+To run test_dbus_proxy_restricts.py:
+$ cd component-test
+$ DBUS_SESSION_BUS_ADDRESS="unix:path=/tmp/dbus_proxy_outside_socket" ../dbus-proxy /tmp/dbus_proxy_inside_socket session < conf_restrict_all.json
+$ cd component-test && py.test -vvv test_dbus_proxy_restricts.py
