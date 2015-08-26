@@ -290,13 +290,37 @@ DBusHandlerResult master_filter_cb (DBusConnection *conn,
 	if (!dbus_conn) {
 		exit(1);
 	}
+	/* Make sure that a new connection does not have a unique name
+	   that was previously owned by an eavesdropping connection */
+	if (dbus_message_get_member(msg) != NULL &&
+	    strcmp(dbus_message_get_member(msg), "NameAcquired") == 0)
+	{
+		const char *dest = dbus_message_get_destination(msg);
+		if (verbose)
+		{
+			g_print ("NameAcquired received by %s\n", dest);
+		}
+
+		if (dest != NULL &&
+		    is_conn_known_eavesdropper(dest))
+		{
+			if (verbose)
+			{
+				g_print("New connection's unique name ('%s')"
+					" was previously known as an eavesdropper."
+					" Removed old entry...\n", dest);
+			}
+			remove_name_from_known_eavesdroppers(dest);
+		}
+	}
 
 	/* Forward */
 	if (dbus_message_get_interface(msg) == NULL ||
 	    strcmp(dbus_message_get_interface(msg),
 	           "org.freedesktop.DBus")  == 0)
 	{
-		if (is_incoming_eavesdropping(msg))
+		if (is_incoming_eavesdropping(msg) &&
+		    !is_conn_known_eavesdropper(dbus_message_get_sender(msg)))
 		{
 			eavesdropping_conns =
 			    g_list_append (eavesdropping_conns,
@@ -407,6 +431,37 @@ gboolean is_conn_known_eavesdropper (const char *unique_name)
 	}
 
 	return found;
+}
+
+/*! \brief Removes a unique name from the list of eavesdroppers
+ *
+ * Removes a unique name from the list of eavesdropping connections.
+ * If an eavesdropping connection is disconnected, then the unique
+ * name will still be stored in the list of eavesdropping connections
+ * until explicitly removed (e.g. when a new connection is assigned
+ * with the same unique name by the bus).
+ *
+ * \param unique_name The unique name of the D-Bus connection to be removed
+ * \return TRUE If connection was found and removed
+ * \return FALSE If connection could not be found
+ */
+gboolean remove_name_from_known_eavesdroppers (const char *unique_name)
+{
+	gboolean removed = FALSE;
+	GList *iter = eavesdropping_conns;
+
+	while (iter != NULL)
+	{
+		if (strcmp(unique_name, (char*) iter->data) == 0)
+		{
+			eavesdropping_conns =
+			  g_list_remove (eavesdropping_conns, iter->data);
+			removed = TRUE;
+		}
+		iter = iter->next;
+	}
+
+	return removed;
 }
 
 /*! \brief Accept a new connection
