@@ -21,6 +21,11 @@
 
 
 #include "proxy.h"
+#include <signal.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/wait.h>
 #include <stdlib.h>
 #include <dbus/dbus.h>
 #include <dbus/dbus-glib.h>
@@ -33,6 +38,8 @@ DBusConnection  *dbus_conn    = NULL;
 /*! the connection to the real server */
 DBusGConnection *master_conn  = NULL;
 
+DBusServer *dbus_srv = NULL;
+
 /*! JSON filter rules read from file */
 json_t          *json_filters = NULL;
 
@@ -44,6 +51,14 @@ gboolean         verbose      = FALSE;
 
 /*! Bus type to create */
 DBusBusType      bus          = DBUS_BUS_SESSION;
+
+/*! List of connections that are to be ignored */
+GList           *eavesdropping_conns = NULL;
+
+void handle_sigchld(int sig) {
+  while (waitpid((pid_t)(-1), 0, WNOHANG) > 0) {}
+}
+
 
 /*! \brief Filter for outgoing D-Bus requests
  *
@@ -275,13 +290,50 @@ DBusHandlerResult master_filter_cb (DBusConnection *conn,
 	if (!dbus_conn) {
 		exit(1);
 	}
+	/* Make sure that a new connection does not have a unique name
+	   that was previously owned by an eavesdropping connection */
+	if (dbus_message_get_member(msg) != NULL &&
+	    strcmp(dbus_message_get_member(msg), "NameAcquired") == 0)
+	{
+		const char *dest = dbus_message_get_destination(msg);
+		if (verbose)
+		{
+			g_print ("NameAcquired received by %s\n", dest);
+		}
+
+		if (dest != NULL &&
+		    is_conn_known_eavesdropper(dest))
+		{
+			if (verbose)
+			{
+				g_print("New connection's unique name ('%s')"
+					" was previously known as an eavesdropper."
+					" Removed old entry...\n", dest);
+			}
+			remove_name_from_known_eavesdroppers(dest);
+		}
+	}
 
 	/* Forward */
 	if (dbus_message_get_interface(msg) == NULL ||
 	    strcmp(dbus_message_get_interface(msg),
 	           "org.freedesktop.DBus")  == 0)
 	{
+		if (is_incoming_eavesdropping(msg) &&
+		    !is_conn_known_eavesdropper(dbus_message_get_sender(msg)))
+		{
+			eavesdropping_conns =
+			    g_list_append (eavesdropping_conns,
+					   (gpointer) dbus_message_get_sender(msg));
+		}
+
 		dbus_connection_send(dbus_conn, msg, &serial);
+	} else if (is_conn_known_eavesdropper (dbus_bus_get_unique_name(conn)))
+	{
+		if (verbose) {
+			g_print ("'%s' is an eavesdropping connection, let it go...\n",
+				 dbus_bus_get_unique_name(conn));
+		}
 	} else if (is_allowed("incoming",
 	           dbus_message_get_interface (msg),
 	           dbus_message_get_path      (msg),
@@ -314,6 +366,102 @@ dbus_bool_t allow_all_connections (DBusConnection *conn,
                                    void           *data)
 {
 	return TRUE;
+}
+
+/*! \brief Test if a new connection has signaled that it wants to eavesdrop
+ *
+ * If a new connection is eavesdropping (for instance like the dbus-monitor)
+ * the D-Bus proxy will keep track of it and make sure that it does not
+ * hijack the messages.
+ *
+ * \param msg The D-Bus message sent to org.freedesktop.DBus
+ * \return TRUE If connection wants to eavesdrop
+ * \return FALSE If connection does not want to eavesdrop
+ */
+gboolean is_incoming_eavesdropping (DBusMessage *msg)
+{
+	gboolean is_eavesdropping = FALSE;
+
+	/* Look for AddMatch and eavesdrop=true in message */
+	if (dbus_message_get_member(msg) != NULL &&
+	    strcmp(dbus_message_get_member(msg), "AddMatch") == 0)
+        {
+		const char *msg_arguments;
+		dbus_message_get_args (msg,
+				       NULL,
+				       DBUS_TYPE_STRING,
+				       &msg_arguments);
+
+		if (strstr(msg_arguments, "eavesdrop=true") != NULL)
+		{
+			is_eavesdropping = TRUE;
+			if (verbose)
+			{
+				g_print ("'%s' AddMatch-args: \"%s\"\n",
+					 dbus_message_get_sender(msg),
+					 msg_arguments);
+			}
+		}
+        }
+	return is_eavesdropping;
+}
+
+/*! \brief Test if existing connection is an eavesdropping connection
+ *
+ * Tests if the connection passed as argument is in the list of known
+ * eavesdropping connections.
+ *
+ * \param unique_name The unique name of the D-Bus connection to test
+ * \return TRUE Connection is an eavesdropping connection
+ * \return FALSE Connection is not an eavesdropping connection
+ */
+gboolean is_conn_known_eavesdropper (const char *unique_name)
+{
+	gboolean found = FALSE;
+	GList *iter = eavesdropping_conns;
+
+	while (iter != NULL)
+	{
+		if (strcmp(unique_name, (char*) iter->data) == 0)
+		{
+			found = TRUE;
+			break;
+		}
+		iter = iter->next;
+	}
+
+	return found;
+}
+
+/*! \brief Removes a unique name from the list of eavesdroppers
+ *
+ * Removes a unique name from the list of eavesdropping connections.
+ * If an eavesdropping connection is disconnected, then the unique
+ * name will still be stored in the list of eavesdropping connections
+ * until explicitly removed (e.g. when a new connection is assigned
+ * with the same unique name by the bus).
+ *
+ * \param unique_name The unique name of the D-Bus connection to be removed
+ * \return TRUE If connection was found and removed
+ * \return FALSE If connection could not be found
+ */
+gboolean remove_name_from_known_eavesdroppers (const char *unique_name)
+{
+	gboolean removed = FALSE;
+	GList *iter = eavesdropping_conns;
+
+	while (iter != NULL)
+	{
+		if (strcmp(unique_name, (char*) iter->data) == 0)
+		{
+			eavesdropping_conns =
+			  g_list_remove (eavesdropping_conns, iter->data);
+			removed = TRUE;
+		}
+		iter = iter->next;
+	}
+
+	return removed;
 }
 
 /*! \brief Accept a new connection
@@ -389,11 +537,14 @@ void new_connection_cb (DBusServer *server, DBusConnection *conn, void *data) {
 }
 
 void start_bus() {
-	DBusServer *dbus_srv;
 	DBusError   error;
 
 	dbus_error_init (&error);
 
+	if (dbus_srv != NULL) {
+		dbus_server_disconnect(dbus_srv);
+		dbus_server_unref(dbus_srv);
+	}
 	dbus_srv = dbus_server_listen (address, &error);
 	if (dbus_srv == NULL) {
 		g_printerr("Cannot listen on %s\n", address);
@@ -491,6 +642,15 @@ int main(int argc, char *argv[]) {
 	if (parse_json_from_stdin (argv[2]) == 1){
 		g_print ("Something wrong with JSON file. Exiting...\n");
 		exit (1);
+	}
+
+	struct sigaction sa;
+	sa.sa_handler = &handle_sigchld;
+	sigemptyset(&sa.sa_mask);
+	sa.sa_flags = SA_RESTART | SA_NOCLDSTOP;
+	if (sigaction(SIGCHLD, &sa, 0) == -1) {
+		perror(0);
+		exit(1);
 	}
 
 	/* Start listening */

@@ -29,3 +29,13 @@ The values used for direction is 'outgoing' and 'incoming'. One way to picture i
 is to consider anything connecting to the bus specified when starting dbus-proxy
 as being on the 'inside' and thus any interaction with the bus specified when
 starting dbus-proxy is 'outgoing'.
+
+A word on eavesdropping connections
+===================================
+In the D-Bus proxy, eavesdropping connections such as the dbus-monitor  will be
+ignored. That is, if an eavesdropping connection receives a message, the proxy
+will not consider the message to have been handled yet.
+
+Allowing eavesdropping is considered a system configuration and is done in the
+D-Bus configuration files, usually located in either /etc/dbus-1/session.conf
+or in configuration include files in /etc/dbus-1/session.d/.
