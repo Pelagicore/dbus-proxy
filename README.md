@@ -5,10 +5,14 @@ For ubuntu, you'll want the libdbus-glib-1-dev package installed
 Running
 =======
 To run the proxy, make it, and then try:
-./dbus-proxy /tmp/my_proxy_socket bus-type < example_conf.json
-                      ^- Socket to create for communication
-                                          ^- "session" or "system"
-                                                   ^- Our config
+
+    ./dbus-proxy /tmp/my_proxy_socket bus-type < example_conf.json
+
+Where:
+
+* `/tmp/my_proxy_socket` is the socket to create for communication.
+* `bus-type` should be set to either `session` or `system`.
+* `example_conf.json` is the configuration file to use.
 
 You can then interact with the socket via, for instance, d-feet.
 
