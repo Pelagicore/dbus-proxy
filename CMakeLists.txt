@@ -10,13 +10,13 @@ pkg_check_modules(DEPENDENCIES REQUIRED dbus-1 dbus-glib-1 jansson)
 add_definitions(${DEPENDENCIES_CFLAGS_OTHER})
 include_directories(${DEPENDENCIES_INCLUDE_DIRS})
 
-add_executable( dbus-proxy 
-	proxy.c
+add_executable(dbus-proxy
+	src/proxy.c
 )
 
-TARGET_LINK_LIBRARIES( dbus-proxy 
+target_link_libraries(dbus-proxy
 	${DEPENDENCIES_LIBRARIES}
 )
 
-INSTALL(TARGETS dbus-proxy RUNTIME DESTINATION bin)
+install(TARGETS dbus-proxy RUNTIME DESTINATION bin)
 
