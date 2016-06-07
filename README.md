@@ -43,3 +43,10 @@ will not consider the message to have been handled yet.
 Allowing eavesdropping is considered a system configuration and is done in the
 D-Bus configuration files, usually located in either /etc/dbus-1/session.conf
 or in configuration include files in /etc/dbus-1/session.d/.
+
+
+Testing
+=======
+
+Component tests are found in `component-test`, please see README.md in that directory
+for further details
