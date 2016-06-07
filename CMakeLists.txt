@@ -1,10 +1,10 @@
+
 cmake_minimum_required(VERSION 2.6)
 
 set(PACKAGE dbus-proxy)
 project(${PACKAGE})
 
 find_package(PkgConfig REQUIRED)
-find_package(PelagicoreUtilities REQUIRED)
 
 pkg_check_modules(DEPENDENCIES REQUIRED dbus-1 dbus-glib-1 jansson)
 add_definitions(${DEPENDENCIES_CFLAGS_OTHER})
@@ -18,6 +18,5 @@ TARGET_LINK_LIBRARIES( dbus-proxy
 	${DEPENDENCIES_LIBRARIES}
 )
 
-add_doxygen_doc(dbus-proxy)
-
 INSTALL(TARGETS dbus-proxy RUNTIME DESTINATION bin)
+
