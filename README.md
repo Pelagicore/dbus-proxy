@@ -6,13 +6,13 @@ Running
 =======
 To run the proxy, make it, and then try:
 
-    ./dbus-proxy /tmp/my_proxy_socket bus-type < example_conf.json
+    ./dbus-proxy /tmp/my_proxy_socket bus-type < example-configs/example_conf.json
 
 Where:
 
 * `/tmp/my_proxy_socket` is the socket to create for communication.
 * `bus-type` should be set to either `session` or `system`.
-* `example_conf.json` is the configuration file to use.
+* `example-configs/example_conf.json` is the configuration file to use.
 
 You can then interact with the socket via, for instance, d-feet.
 
@@ -25,7 +25,7 @@ be able to share configuration files.
 
 The content of the JSON file can vary as long as the "dbus-gateway-config-<bustype>"
 attribute holds a JSON array of JSON objects with certain name/value pairs,
-example_conf.json shows an example of how the JSON configuration files should be
+`example-configs/example_conf.json` shows an example of how the JSON configuration files should be
 structured.
 
 A note on 'direction' in the configuration:
