@@ -1,4 +1,13 @@
 
+""" Copyright (c) 2016 Pelagicore AB """
+
+
+import pytest
+
+from os import environ
+from subprocess import Popen, PIPE
+
+
 """
     Tests various aspects of the D-Bus proxy. Depending on the test case, the
     test may act as a service running outside of the container or an app
@@ -7,12 +16,6 @@
     The tests in this module requries that the D-Bus proxy is started with a
     permit all configuration for the session bus.
 """
-
-
-import pytest
-
-from os import environ
-from subprocess import Popen, PIPE
 
 
 CONF_ALLOW_ALL = """
@@ -30,15 +33,20 @@ CONF_ALLOW_ALL = """
 
 
 class TestDBusProxyPermits(object):
-    """
-        According to https://atlassian.pelagicore.net/jira/browse/TAC-58, the
-        D-Bus proxy had fd leaks and zombie processes making it crash after 544
-        calls. Using dbus-send command, this test attempts to call a D-Bus
-        service running outside the container. The test represents an app
-        running on the inside.
-        The test will send 1024 messages to a D-Bus proxy test service.
-    """
-    def test_dbus_send_command(self, session_bus, service_on_outside, dbus_proxy):
+
+    def test_proxy_handles_many_calls(self, session_bus, service_on_outside, dbus_proxy):
+        """ Assert dbus-proxy doesn't crash due to fd and zombie process leaks.
+
+            The history behind this test is that there was a bug reported that
+            dbus-proxy always crashed after 544 calls on D-Bus.
+
+            Test steps:
+              * Configure dbus-proxy.
+              * Call a method on D-Bus from "inside".
+              * Assert the method call can be performed 1024 times, i.e.
+                dbus-proxy didn't crash.
+
+        """
         dbus_proxy.set_config(CONF_ALLOW_ALL)
 
         DBUS_SEND_CMD = ["dbus-send",

@@ -1,12 +1,5 @@
 
-""" Component test fixtures.
-
-    This module makes the following assumptions:
-
-    * py.test is invoked from the same directory as this module is located
-    * start_outside_service.py is located in the same directory
-    * dbus-proxy is found in a build/ directory one level above, i.e. "../build/dbus-proxy"
-"""
+""" Copyright (c) 2016 Pelagicore AB """
 
 
 import pytest
@@ -17,6 +10,16 @@ import sys
 import tempfile
 from time import sleep
 from subprocess import Popen, call
+
+
+""" Component test fixtures.
+
+    This module makes the following assumptions:
+
+    * py.test is invoked from the same directory as this module is located
+    * start_outside_service.py is located in the same directory
+    * dbus-proxy is found in a build/ directory one level above, i.e. "../build/dbus-proxy"
+"""
 
 
 OUTSIDE_SOCKET = "/tmp/dbus_proxy_outside_socket"

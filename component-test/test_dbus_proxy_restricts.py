@@ -1,11 +1,14 @@
+
+""" Copyright (c) 2015 Pelagicore AB """
+
+
 import pytest
 import dbus
 
-OUTSIDE_CONNECTION_NAME = "com.dbusproxyoutsideservice.SampleService"
-INSIDE_CONNECTION_NAME = "com.dbusproxyinsideservice.SampleService"
-DBUS_OBJECT_PATH = "/SomeObject"
-OUTSIDE_SOCKET = "unix:path=/tmp/dbus_proxy_outside_socket"
-INSIDE_SOCKET = "unix:path=/tmp/dbus_proxy_inside_socket"
+from os import environ
+from subprocess import Popen, PIPE
+from time import sleep
+
 
 """
     Tests various aspects of the D-Bus proxy. Depending on the test case, the
@@ -13,38 +16,48 @@ INSIDE_SOCKET = "unix:path=/tmp/dbus_proxy_inside_socket"
     running on the inside.
 
     The tests in this module requries that the D-Bus proxy is started with a
-    restrict all configuration for the session bus. E.g.:
+    restrict all configuration for the session bus.
+"""
 
-    {
-        "some-ignored-attribute": "this-is-ignored",
-        "dbus-gateway-config-session": [],
-        "dbus-gateway-config-system": []
-    }
 
+OUTSIDE_CONNECTION_NAME = "com.dbusproxyoutsideservice.SampleService"
+INSIDE_CONNECTION_NAME = "com.dbusproxyinsideservice.SampleService"
+DBUS_OBJECT_PATH = "/SomeObject"
+OUTSIDE_SOCKET = "unix:path=/tmp/dbus_proxy_outside_socket"
+INSIDE_SOCKET = "unix:path=/tmp/dbus_proxy_inside_socket"
+
+CONF_RESTRICT_ALL = """
+{
+    "some-ignored-attribute": "this-is-ignored",
+    "dbus-gateway-config-session": [],
+    "dbus-gateway-config-system": []
+}
 """
 
 
 class TestDBusProxyRestricts(object):
-    """
-        When configured for allowing eavesdropping, eavesdropping D-Bus
-        connections such as the dbus-monitor interrupts the messages passed
-        between outside services (i.e. servers and clients both residing
-        outside of the container).
 
-        The expected outcome of this test case is that the message sent from
-        the dbus-send command should result in a proper reply even though the
-        D-Bus proxy is set to restrict all (because the D-Bus proxy should not
-        intercept messages sent between clients and servers both running
-        outside of the container.
+    def test_proxy_hogs_external_messages_when_monitor_is_running(self,
+                                                                  session_bus,
+                                                                  service_on_outside,
+                                                                  dbus_proxy):
+        """
+            When configured for allowing eavesdropping, eavesdropping D-Bus
+            connections such as the dbus-monitor interrupts the messages passed
+            between outside services (i.e. servers and clients both residing
+            outside of the container).
 
-        The problem only exists when D-Bus is started with eavesdropping
-        allowed. If the system is not configured for allowing eavesdropping,
-        the test will result in a false pass.
-    """
-    def test_proxy_hogs_external_messages_when_monitor_is_running(self):
-        from os import environ
-        from subprocess import Popen, PIPE
-        from time import sleep
+            The expected outcome of this test case is that the message sent from
+            the dbus-send command should result in a proper reply even though the
+            D-Bus proxy is set to restrict all (because the D-Bus proxy should not
+            intercept messages sent between clients and servers both running
+            outside of the container.
+
+            The problem only exists when D-Bus is started with eavesdropping
+            allowed. If the system is not configured for allowing eavesdropping,
+            the test will result in a false pass.
+        """
+        dbus_proxy.set_config(CONF_RESTRICT_ALL)
 
         DBUS_MONITOR_CMD = ["dbus-monitor",
                             "--address",
@@ -80,19 +93,19 @@ class TestDBusProxyRestricts(object):
 
         assert "Hello" in captured_stdout
 
-    """
-        This test does not behave as it should. The proxy rejects the
-        introspection message but lets the HelloWorld-call through. The
-        problem seems to be present only when using the python D-Bus lib.
-        Introspect is called before any methods are actually called.
-
-        The DBusRemoteObjectHelper created represents an app running on the
-        inside, calling a method on a session bus service running on the
-        outside. Expected behavior is that the HelloWorld message is rejected
-        by the proxy.
-    """
     @pytest.mark.skipif(1, reason="See comment")
     def test_proxy_incoming_message(self):
+        """
+            This test does not behave as it should. The proxy rejects the
+            introspection message but lets the HelloWorld-call through. The
+            problem seems to be present only when using the python D-Bus lib.
+            Introspect is called before any methods are actually called.
+
+            The DBusRemoteObjectHelper created represents an app running on the
+            inside, calling a method on a session bus service running on the
+            outside. Expected behavior is that the HelloWorld message is rejected
+            by the proxy.
+        """
         bus = dbus.bus.BusConnection(INSIDE_SOCKET)
         inside_object = DBusRemoteObjectHelper(bus,
                                                OUTSIDE_CONNECTION_NAME)
