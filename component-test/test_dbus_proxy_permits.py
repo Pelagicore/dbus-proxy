@@ -1,4 +1,3 @@
-import pytest
 
 """
     Tests various aspects of the D-Bus proxy. Depending on the test case, the
@@ -6,19 +5,27 @@ import pytest
     running on the inside.
 
     The tests in this module requries that the D-Bus proxy is started with a
-    permit all configuration for the session bus. E.g.:
+    permit all configuration for the session bus.
+"""
 
-    {
-        "some-ignored-attribute": "this-is-ignored",
-        "dbus-gateway-config-session": [
-                 {
-                    "direction": "*",
-                    "interface": "*",
-                    "object-path": "*",
-                    "method": "*"
-                 }],
-        "dbus-gateway-config-system": []
-    }
+
+import pytest
+
+from os import environ
+from subprocess import Popen, PIPE
+
+
+CONF_ALLOW_ALL = """
+{
+    "some-ignored-attribute": "this-is-ignored",
+    "dbus-gateway-config-session": [{
+        "direction": "*",
+        "interface": "*",
+        "object-path": "*",
+        "method": "*"
+    }],
+    "dbus-gateway-config-system": []
+}
 """
 
 
@@ -30,12 +37,9 @@ class TestDBusProxyPermits(object):
         service running outside the container. The test represents an app
         running on the inside.
         The test will send 1024 messages to a D-Bus proxy test service.
-
-        Configuration to use: conf_allow_all.json
     """
-    def test_dbus_send_command(self):
-        from os import environ
-        from subprocess import Popen, PIPE
+    def test_dbus_send_command(self, session_bus, service_on_outside, dbus_proxy):
+        dbus_proxy.set_config(CONF_ALLOW_ALL)
 
         DBUS_SEND_CMD = ["dbus-send",
                          "--address=unix:path=/tmp/dbus_proxy_inside_socket",
