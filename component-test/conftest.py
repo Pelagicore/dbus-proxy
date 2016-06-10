@@ -51,6 +51,8 @@ def session_bus(request):
         " --address=" + "unix:path=" + OUTSIDE_SOCKET
     ]
     try:
+        # For some reason shell needs to be set to True, which is the reason the command
+        # is passed as a string instead as an argument list, as recommended in the docs.
         dbus_daemon = Popen(
             "".join(start_dbus_daemon_command),
             env=environment,
@@ -106,7 +108,6 @@ def dbus_proxy(request):
         The dbus-proxy is torn down at the end of the test.
     """
     # TODO: Make bus type parametrized so we can use the system bus as well.
-    # TODO: Make socket address parametrized.
     # TODO: Make path to dbus-proxy parametrized.
 
     dbus_proxy = None
@@ -134,6 +135,8 @@ def dbus_proxy(request):
     ]
 
     try:
+        # For some reason shell needs to be set to True, which is the reason the command
+        # is passed as a string instead as an argument list, as recommended in the docs.
         dbus_proxy = Popen(
             "".join(start_proxy_command),
             env=environment,
