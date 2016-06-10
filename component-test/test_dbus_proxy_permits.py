@@ -50,7 +50,7 @@ class TestDBusProxyPermits(object):
         dbus_proxy.set_config(CONF_ALLOW_ALL)
 
         DBUS_SEND_CMD = ["dbus-send",
-                         "--address=unix:path=/tmp/dbus_proxy_inside_socket",
+                         "--address=" + dbus_proxy.INSIDE_SOCKET,
                          "--print-reply",
                          '--dest=com.dbusproxyoutsideservice.SampleService',
                          "/SomeObject",

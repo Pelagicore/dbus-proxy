@@ -23,8 +23,6 @@ from time import sleep
 OUTSIDE_CONNECTION_NAME = "com.dbusproxyoutsideservice.SampleService"
 INSIDE_CONNECTION_NAME = "com.dbusproxyinsideservice.SampleService"
 DBUS_OBJECT_PATH = "/SomeObject"
-OUTSIDE_SOCKET = "unix:path=/tmp/dbus_proxy_outside_socket"
-INSIDE_SOCKET = "unix:path=/tmp/dbus_proxy_inside_socket"
 
 CONF_RESTRICT_ALL = """
 {
@@ -61,7 +59,7 @@ class TestDBusProxyRestricts(object):
 
         DBUS_MONITOR_CMD = ["dbus-monitor",
                             "--address",
-                            INSIDE_SOCKET]
+                            dbus_proxy.INSIDE_SOCKET]
 
         DBUS_SEND_CMD = ["dbus-send",
                          "--session",
@@ -73,7 +71,7 @@ class TestDBusProxyRestricts(object):
 
         # Prepare environment for dbus-monitor and start it
         dbus_monitor_environment = environ.copy()
-        dbus_monitor_environment["DBUS_SESSION_BUS_ADDRESS"] = INSIDE_SOCKET
+        dbus_monitor_environment["DBUS_SESSION_BUS_ADDRESS"] = dbus_proxy.INSIDE_SOCKET
         dbus_monitor_process = Popen(DBUS_MONITOR_CMD,
                                      env=dbus_monitor_environment,
                                      stdout=PIPE)
@@ -81,7 +79,7 @@ class TestDBusProxyRestricts(object):
 
         # Prepare environment for dbus-send and send the message
         dbus_send_environment = environ.copy()
-        dbus_send_environment["DBUS_SESSION_BUS_ADDRESS"] = OUTSIDE_SOCKET
+        dbus_send_environment["DBUS_SESSION_BUS_ADDRESS"] = dbus_proxy.OUTSIDE_SOCKET
         dbus_send_process = Popen(DBUS_SEND_CMD,
                                   env=dbus_send_environment,
                                   stdout=PIPE)
@@ -106,9 +104,8 @@ class TestDBusProxyRestricts(object):
             outside. Expected behavior is that the HelloWorld message is rejected
             by the proxy.
         """
-        bus = dbus.bus.BusConnection(INSIDE_SOCKET)
-        inside_object = DBusRemoteObjectHelper(bus,
-                                               OUTSIDE_CONNECTION_NAME)
+        bus = dbus.bus.BusConnection(dbus_proxy.INSIDE_SOCKET)
+        inside_object = DBusRemoteObjectHelper(bus, OUTSIDE_CONNECTION_NAME)
         inside_object.call_hello_world()
         assert inside_object.get_response()[0] == "Hello"
 

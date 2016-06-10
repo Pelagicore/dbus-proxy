@@ -159,6 +159,9 @@ class DBusProxyHelper(object):
 
     def __init__(self, fifo):
         self.__fifo = fifo
+        # Tests should get the socket paths from here
+        self.INSIDE_SOCKET = "unix:path=" + INSIDE_SOCKET
+        self.OUTSIDE_SOCKET = "unix:path=" + OUTSIDE_SOCKET
 
     def set_config(self, config):
         """ Write json config to dbus-proxy
