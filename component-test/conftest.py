@@ -56,12 +56,15 @@ def session_bus(request):
             env=environment,
             shell=True,
             stdout=sys.stdout)
+        # Allow time for the bus daemon to start
+        sleep(0.3)
     except OSError as e:
         print "Error starting dbus-daemon: " + str(e)
         sys.exit(1)
 
     def teardown():
         dbus_daemon.kill()
+        os.remove(OUTSIDE_SOCKET)
 
     request.addfinalizer(teardown)
 
@@ -142,6 +145,8 @@ def dbus_proxy(request):
 
     def teardown():
         dbus_proxy.kill()
+        # dbus-proxy creates the socket passed to it as argument at startup
+        os.remove(INSIDE_SOCKET)
         os.remove(fifo_filename)
         os.rmdir(tempdir)
 
