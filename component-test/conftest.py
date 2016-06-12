@@ -176,3 +176,6 @@ class DBusProxyHelper(object):
         """
         with open(self.__fifo, "w") as fh:
             fh.write(config)
+        # Allow some time for the proxy to be setup before tests start using the
+        # "inside" socket.
+        sleep(0.3)
