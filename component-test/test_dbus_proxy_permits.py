@@ -31,6 +31,18 @@ CONF_ALLOW_ALL = """
 }
 """
 
+CONF_ALLOW_ALL_OUTGOING_METHODS_ON_IFACE = """
+{
+    "dbus-gateway-config-session": [{
+        "direction": "outgoing",
+        "interface": "com.dbusproxyoutsideservice.SampleInterface",
+        "object-path": "*",
+        "method": "*"
+    }],
+    "dbus-gateway-config-system": []
+}
+"""
+
 
 class TestDBusProxyPermits(object):
 
@@ -64,3 +76,17 @@ class TestDBusProxyPermits(object):
                                       stdout=PIPE)
             captured_stdout = dbus_send_process.communicate()[0]
             assert "Hello" in captured_stdout
+
+    #def test_proxy_allows_all_outgoing_calls_on_an_interface(self, session_bus, service_on_outside, dbus_proxy):
+        """ Assert dbus-proxy allows all calls made on a service with a specific interface.
+
+            Test steps:
+              * Configure dbus-proxy
+              * Call two different methods on outside service
+              * Assert the method calls goes through to the service
+        """
+
+""" TODO:   * Test that outgoing direction rules doesn't open up ingoing access
+            * Test that specified method is allowed and all other rejected
+            * Test that wildcards work
+"""
