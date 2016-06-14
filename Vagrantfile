@@ -10,6 +10,9 @@ Vagrant.configure(2) do |config|
         vb.customize [ "guestproperty", "set", :id, "/VirtualBox/GuestAdd/VBoxService/--timesync-set-threshold", 200 ]
     end
 
+    # Sync the repo root with this path in the VM
+    config.vm.synced_folder "./", "/home/vagrant/dbus-proxy", create: true
+
     # Deploy a private key used to clone gits from pelagicore.net
     config.vm.provision "file", source: vagrant_private_key_file, destination: "/home/vagrant/.ssh/id_rsa"
 
