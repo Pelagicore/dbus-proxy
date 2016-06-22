@@ -9,12 +9,15 @@ run and driven using `py.test`.
 Installing pytest
 =================
 
-    sudo apt-get install pip
+    sudo apt-get install python-pip
     sudo pip install pytest
 
 
 Test setup
 ==========
+
+The tests assume the `dbus-proxy` binary is located in a directory named `build`
+one level above the `component-test` directory.
 
 The tests requires that:
 
