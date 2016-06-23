@@ -196,11 +196,22 @@ gboolean match_rule(const json_t *rule,
 	}
 
 	string = (gchar*) json_string_value (json_entry);
-	if ((strcmp (string, "") != 0) &&
-	     g_pattern_match_simple (string, comparison)) {
-		return TRUE;
+	if (verbose) {
+		g_print("will try matching %s with %s\n", string, comparison);
+        }
+
+        if ((strcmp (string, "") != 0) &&
+                g_pattern_match_simple (string, comparison))
+        {
+                if (verbose) {
+                        g_print("was a match\n");
+                }
+                return TRUE;
 	} else {
-		return FALSE;
+                if (verbose) {
+                    g_print("no match\n");
+                }
+                return FALSE;
 	}
 }
 
@@ -225,6 +236,9 @@ gboolean is_allowed (const char *direction,
 	json_t   *rule;
 	gboolean  direction_ok, interface_ok, object_path_ok, method_ok;
 
+	/* Check all rules until a match is found. When a match is found we
+	   don't check any following rules. This means that a more permissive
+	   rule will trump less permissive rules. */
 	for (i = 0; i < json_array_size (json_filters); i++) {
 		direction_ok, interface_ok, object_path_ok, method_ok = FALSE;
 

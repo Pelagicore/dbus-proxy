@@ -84,7 +84,7 @@ def service_on_outside(request):
         outside_service = Popen(
             [
                 "python",
-                "start_outside_service.py"
+                "service_stubs.py"
             ],
             env=environment,
             stdout=sys.stdout)
