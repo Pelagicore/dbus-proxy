@@ -19,9 +19,22 @@
  * Boston, MA  02110-1301, USA.
  */
 
+#include <dbus/dbus.h>
+#include <dbus/dbus-glib.h>
+
 /*! \brief Listen for new connections
  *
  * Listen for new connections, and once a new connection is received send this
  * over to the new_connection_cb () callback function
  */
 void start_bus();
+
+gboolean is_allowed (const char *direction, const char *interface,
+                     const char *path, const char *member);
+gboolean is_conn_known_eavesdropper (const char *unique_name);
+gboolean remove_name_from_known_eavesdroppers (const char *unique_name);
+gboolean is_incoming_eavesdropping (DBusMessage *msg);
+
+// External
+pid_t fork();
+pid_t getpid();

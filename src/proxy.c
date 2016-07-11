@@ -27,8 +27,6 @@
 #include <string.h>
 #include <sys/wait.h>
 #include <stdlib.h>
-#include <dbus/dbus.h>
-#include <dbus/dbus-glib.h>
 #include <dbus/dbus-glib-lowlevel.h>
 #include <jansson.h>
 
