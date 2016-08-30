@@ -50,3 +50,12 @@ Testing
 
 Component tests are found in `component-test`, please see README.md in that directory
 for further details
+
+
+Copyright and license
+=====================
+* Copyright (C) 2013-2016, Pelagicore AB  <joakim.gross@pelagicore.com>
+* Copyright (C) 2011, Stéphane Graber (Arkose project modifications)  <stgraber@stgraber.org>
+* Copyright (C) 2010, Alban Crequy (Initial single threaded proxy)  <alban.crequy@collabora.co.uk>
+
+The source code in this repository is subject to the terms of the LGPL-2.1 licence
