@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013, Pelagicore AB   <jonatan.palsson@pelagicore.com>
+ * Copyright (C) 2013-2016, Pelagicore AB   <joakim.gross@pelagicore.com>
  * Copyright (C) 2011, Stéphane Graber <stgraber@stgraber.org>
  * Copyright (C) 2010, Alban Crequy    <alban.crequy@collabora.co.uk>
  *
@@ -17,6 +17,8 @@
  * License along with this library; if not, write to the
  * Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor,
  * Boston, MA  02110-1301, USA.
+ *
+ * For further information see LICENSE
  */
 
 
