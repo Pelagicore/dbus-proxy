@@ -51,7 +51,7 @@ Vagrant.configure(2) do |config|
     config.vm.provision "shell", path: "vagrant-cookbook/deps/sphinx-dependencies.sh"
 
     # Add known hosts
-    config.vm.provision "shell", privileged: false, path: "vagrant-cookbook/system-config/pelagicore-ssh-conf.sh"
+    config.vm.provision "shell", privileged: false, path: "vagrant-cookbook/system-config/ssh-keyscan-conf.sh"
 
     # Install dependencies for py.test and D-Bus testing
     config.vm.provision "shell", path: "vagrant-cookbook/deps/pytest-and-dbus-testing-dependencies.sh"
