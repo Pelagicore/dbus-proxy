@@ -5,6 +5,8 @@ dbus-proxy
 It can be configured to filter what is accessible for the client on the
 connection.
 
+Maintained at: https://github.com/Pelagicore/dbus-proxy
+
 
 Dependencies
 ------------
