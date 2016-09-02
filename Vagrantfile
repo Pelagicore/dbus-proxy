@@ -19,8 +19,6 @@
 # For further information see LICENSE
 
 
-vagrant_private_key_file="vagrant_key"
-
 ram = 4 #GB
 cpus = 3
 
@@ -32,9 +30,6 @@ Vagrant.configure(2) do |config|
 
     # Sync the repo root with this path in the VM
     config.vm.synced_folder "./", "/home/vagrant/dbus-proxy", create: true
-
-    # Deploy a private key used to clone gits from pelagicore.net
-    config.vm.provision "file", source: vagrant_private_key_file, destination: "/home/vagrant/.ssh/id_rsa"
 
     # Workaround for some bad network stacks
     config.vm.provision "shell", privileged: false, path: "vagrant-cookbook/utils/keepalive.sh"
@@ -58,8 +53,8 @@ Vagrant.configure(2) do |config|
 
     # Build and install project
     config.vm.provision "shell", privileged: false,
-        args: ["dbus-proxy", "git@git.pelagicore.net:application-management/dbus-proxy.git"],
-        path: "vagrant-cookbook/build/cmake-git-builder.sh"
+        args: ["dbus-proxy"],
+        path: "vagrant-cookbook/build/cmake-builder.sh"
 
     config.vm.provision "shell", privileged: false, inline: <<-SHELL
         sudo pip install pytest
