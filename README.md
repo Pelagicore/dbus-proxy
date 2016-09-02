@@ -24,6 +24,12 @@ $ make
 $ make install
 ```
 
+### Building in Vagrant
+For some purposes it is convenient to build in a virtual machine, e.g. in order to
+have a consistent environment, integration into CI systems etc. `dbus-proxy` comes
+prepared for this, see __Testing__ for details.
+
+
 Running
 -------
 `dbus-proxy` is invoked like so:
@@ -69,7 +75,27 @@ or in configuration include files in /etc/dbus-1/session.d/.
 Testing
 -------
 Component tests are found in `component-test`, please see README.md in that directory
-for further details
+for further details about the tests structure etc.
+
+### Running tests in virtual machine
+For convenience (under some circumstances) there is support for running the component tests
+in a virtual machine using Vagrant:
+
+```
+git submodule init
+git submodule update
+
+sudo apt-get install virtualbox
+sudo apt-get install vagrant
+
+vagrant up
+```
+
+Test results should be found in `component-test/component-test-results.xml`. The format is
+junit xml.
+
+Resolving dependencies and making virtualbox work on your system varies in how it's done
+of course. Some systems need to disable safe boot for example.
 
 
 Copyright and license
