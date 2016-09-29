@@ -57,7 +57,6 @@ Vagrant.configure(2) do |config|
         path: "vagrant-cookbook/build/cmake-builder.sh"
 
     config.vm.provision "shell", privileged: false, inline: <<-SHELL
-        sudo pip install pytest
         cd dbus-proxy/component-test
         py.test -v --junitxml=component-test-results.xml
     SHELL
