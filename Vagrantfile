@@ -34,10 +34,17 @@ Vagrant.configure(2) do |config|
     # Workaround for some bad network stacks
     config.vm.provision "shell", privileged: false, path: "vagrant-cookbook/utils/keepalive.sh"
 
-    # Use apt-cacher on main server
+    # Use apt-cacher on cache  server
+    if ENV['APT_CACHE_SERVER'] then
+        config.vm.provision "shell",
+            args: [ENV['APT_CACHE_SERVER']],
+            path: "vagrant-cookbook/system-config/apt-cacher.sh"
+    end
+
+    # Select the best apt mirror for our debian release
     config.vm.provision "shell",
-        args: ['10.8.36.16'],
-        path: "vagrant-cookbook/system-config/apt-cacher.sh"
+        args: ["jessie"],
+        path: "vagrant-cookbook/system-config/select-apt-mirror.sh"
 
     # Upgrade machine to testing distro & install build dependencies
     config.vm.provision "shell", path: "vagrant-cookbook/deps/testing-upgrade.sh"
