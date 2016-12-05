@@ -155,6 +155,152 @@ CONF_ALLOW_ALL_ON_SPECIFIC_OPATH = """
     "opath_1": stubs.OPATH_1
 })
 
+CONF_WHITELIST_DIRECTIONS = """
+{{
+    "dbus-gateway-config-session": [{{
+        "direction": "*",
+        "interface": "*",
+        "object-path": "*",
+        "method": "*"
+    }},
+    {{
+        "direction": "outgoing",
+        "interface": "{iface}.{extension_1}",
+        "object-path": "*",
+        "method": "*"
+    }}],
+    "dbus-gateway-config-system": []
+}}
+""".format(**{
+    "iface": stubs.IFACE_1,
+    "extension_1": stubs.EXT_1
+})
+
+CONF_WHITELIST_DIRECTIONS_REVERSE = """
+{{
+    "dbus-gateway-config-session": [{{
+        "direction": "outgoing",
+        "interface": "{iface}.{extension_1}",
+        "object-path": "*",
+        "method": "*"
+    }},
+    {{
+        "direction": "*",
+        "interface": "*",
+        "object-path": "*",
+        "method": "*"
+    }}],
+    "dbus-gateway-config-system": []
+}}
+""".format(**{
+    "iface": stubs.IFACE_1,
+    "extension_1": stubs.EXT_1
+})
+
+CONF_WHITELIST_PATH = """
+{{
+    "dbus-gateway-config-session": [{{
+        "direction": "*",
+        "interface": "*",
+        "object-path": "*",
+        "method": "*"
+    }},
+    {{
+        "direction": "incoming",
+        "interface": "{iface}.{extension_1}",
+        "object-path": "/a/path/to/unavailable/directory/",
+        "method": "*"
+    }}],
+    "dbus-gateway-config-system": []
+}}
+""".format(**{
+    "iface": stubs.IFACE_1,
+    "extension_1": stubs.EXT_1
+})
+
+CONF_WHITELIST_PATH_REVERSE = """
+{{
+    "dbus-gateway-config-session": [{{
+        "direction": "incoming",
+        "interface": "{iface}.{extension_1}",
+        "object-path": "/a/path/to/unavailable/directory/",
+        "method": "*"
+    }},
+    {{
+        "direction": "*",
+        "interface": "*",
+        "object-path": "*",
+        "method": "*"
+    }}],
+    "dbus-gateway-config-system": []
+}}
+""".format(**{
+    "iface": stubs.IFACE_1,
+    "extension_1": stubs.EXT_1
+})
+
+
+class TestWhitelisting(object):
+
+    @pytest.mark.parametrize("config", [
+        CONF_WHITELIST_DIRECTIONS,
+        CONF_WHITELIST_DIRECTIONS_REVERSE
+    ])
+    def test_directory_whitelist(self, session_bus, service_on_outside, dbus_proxy, config):
+        """ Assert that a configuration that has two rules for directory are applied
+            according to white-listing policy which mandates the system to apply the
+            most permissive directory rule.
+
+            NOTE : Only applicable configuration chains will be considered and unapplicable
+                   rules will be ignored. For instance while testing incoming queries,
+                   the rule chains which have anything other than "incoming" or "*" for
+                   directory will be ignored.
+        """
+        dbus_proxy.set_config(config)
+
+        dbus_send_command = [
+            "dbus-send",
+            "--address=" + dbus_proxy.INSIDE_SOCKET,
+            "--print-reply",
+            "--dest=" + stubs.BUS_NAME,
+            stubs.OPATH_1,
+            stubs.IFACE_1 + "." + stubs.EXT_1 + "." + stubs.EXT_2 + "." + stubs.METHOD_2,
+            'string:"My unique key"']
+
+        environment = environ.copy()
+        dbus_send_process = Popen(dbus_send_command,
+                                  env=environment,
+                                  stdout=PIPE)
+        captured_stdout = dbus_send_process.communicate()[0]
+        assert "My unique key" in captured_stdout
+
+    @pytest.mark.parametrize("config", [
+        CONF_WHITELIST_PATH,
+        CONF_WHITELIST_PATH_REVERSE
+    ])
+    def test_path_whitelist(self, session_bus, service_on_outside, dbus_proxy, config):
+        """ Assert that a configuration that has two rules for object path are
+            applied according to white-listing policy which mandates the system to apply the
+            most permissive object path.
+        """
+        dbus_proxy.set_config(config)
+
+        dbus_send_command = [
+            "dbus-send",
+            "--address=" + dbus_proxy.INSIDE_SOCKET,
+            "--print-reply",
+            "--dest=" + stubs.BUS_NAME,
+            stubs.OPATH_1,
+            stubs.IFACE_1 + "." + stubs.EXT_1 + "." + stubs.EXT_2 + "." + stubs.METHOD_2,
+            'string:"My unique key"']
+
+        environment = environ.copy()
+        dbus_send_process = Popen(dbus_send_command,
+                                  env=environment,
+                                  stdout=PIPE)
+        captured_stdout = dbus_send_process.communicate()[0]
+        assert "My unique key" in captured_stdout   
+
 
 class TestProxyRobustness(object):
 
