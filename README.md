@@ -62,6 +62,9 @@ is to consider anything connecting to the bus specified when starting dbus-proxy
 as being on the 'inside' and thus any interaction with the bus specified when
 starting dbus-proxy is 'outgoing'.
 
+When a D-Bus message is sent, the `dbus-proxy` compares message's direction, interface, path and method with
+configuration list. if a matching rule is found, the message is allowed to forward and otherwise it is dropped.
+
 
 A word on eavesdropping connections
 -----------------------------------
