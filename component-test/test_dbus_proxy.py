@@ -486,6 +486,78 @@ class TestProxyFiltersInterface(object):
         assert "My unique key" not in captured_stdout
 
 
+class TestProxyMethods(object):
+    """ This class tests method configurations. There are two ways of setting methods
+        a string or an array of string representing methods.
+    """
+
+    CONF_SINGLE_METHOD = """
+    {
+        "dbus-gateway-config-session": [{
+            "direction": "*",
+            "interface": "*",
+            "object-path": "*",
+            "method": "Method2"
+        }],
+        "dbus-gateway-config-system": []
+    }
+    """
+
+    CONF_ALL_METHODS = """
+    {
+        "dbus-gateway-config-session": [{
+            "direction": "*",
+            "interface": "*",
+            "object-path": "*",
+            "method": "*"
+        }],
+        "dbus-gateway-config-system": []
+    }
+    """
+
+    CONF_FOUR_METHODS = """
+    {
+        "dbus-gateway-config-session": [{
+            "direction": "*",
+            "interface": "*",
+            "object-path": "*",
+            "method": ["Method1", "Method3", "Method4", "Method2"]
+        }],
+        "dbus-gateway-config-system": []
+    }
+    """
+
+    @pytest.mark.parametrize("config", [
+        CONF_SINGLE_METHOD,
+        CONF_ALL_METHODS,
+        CONF_FOUR_METHODS
+    ])
+    def test_methods(self, session_bus, service_on_outside, dbus_proxy, config):
+        """ This method is stands for testing process of method argument in configuration
+            to be ensure whether code can filter the method on following occasions :
+            * when one exact method name is provided (i.e CONF_SINGLE_METHOD)
+            * when wildcard character is used (i.e. CONF_ALL_METHODS)
+            * when an array of methods is provided (i.e CONF_FOUR_METHODS)
+        """
+
+        dbus_proxy.set_config(config)
+        dbus_send_command = [
+            "dbus-send",
+            "--address=" + dbus_proxy.INSIDE_SOCKET,
+            "--print-reply",
+            "--dest=" + stubs.BUS_NAME,
+            stubs.OPATH_1,
+            stubs.IFACE_1 + "." + stubs.EXT_1 + "." + stubs.EXT_2 + "." + stubs.METHOD_2,
+            'string:"My unique key"']
+
+        environment = environ.copy()
+        dbus_send_process = Popen(dbus_send_command,
+                                  env=environment,
+                                  stdout=PIPE)
+        captured_stdout = dbus_send_process.communicate()[0]
+        assert "My unique key" in captured_stdout
+
+
 class TestProxyFiltersOpath(object):
     """ some comment here
     """

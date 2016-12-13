@@ -172,6 +172,31 @@ out:
 	return retval;
 }
 
+/*! \brief compares if the comparison is contained by string
+ *
+ * \param  comparison The field to compare
+ * \param  string The field in the rule
+ * \return TRUE       if the rule matches the comparison
+ * \return FALSE      if there is no match
+ */
+inline gboolean compare_entry(const char *comparison, const gchar  *string) {
+	if (verbose) {
+	    g_print("will try matching %s with %s\n", string, comparison);
+    }
+
+    if ((strcmp (string, "") != 0) && g_pattern_match_simple (string, comparison)) {
+        if (verbose) {
+            g_print("was a match\n");
+        }
+        return TRUE;
+    } else {
+        if (verbose) {
+            g_print("no match\n");
+        }
+        return FALSE;
+    }
+}
+
 /*! \brief Match a JSON rule against an entry
  *
  * Compare a rule as defined in the JSON rules file against the incoming or
@@ -191,29 +216,60 @@ gboolean match_rule(const json_t *rule,
 	gchar  *string;
 
 	json_entry = json_object_get(rule, entry);
+
+
 	if (!json_is_string (json_entry)) {
 		return FALSE;
 	}
 
 	string = (gchar*) json_string_value (json_entry);
-	if (verbose) {
-		g_print("will try matching %s with %s\n", string, comparison);
-        }
+	return compare_entry(comparison, string);
+}
 
-        if ((strcmp (string, "") != 0) &&
-                g_pattern_match_simple (string, comparison))
-        {
+/*! \brief Match a JSON method against an entry
+ *
+ * Compare a method as defined in the JSON rules file against the incoming or
+ * outgoing message. This is a helper function for is_allowed().
+ *
+ * \param  rule       The JSON rule
+ * \param  comparison The field to compare in the rule
+ * \return TRUE       if the rule matches the comparison
+ * \return FALSE      if there is no match
+ */
+gboolean match_method(const json_t *rule, const char *comparison)
+{
+    json_t *json_entry;
+    gchar  *string;
+
+    json_entry = json_object_get(rule, "method");
+    if (json_is_array(json_entry)) {
+        size_t ix;
+        json_t *val;
+
+        json_array_foreach(json_entry, ix, val) {
+            if (!json_is_string(val)) {
                 if (verbose) {
-                        g_print("was a match\n");
-                }
-                return TRUE;
-	} else {
-                if (verbose) {
-                    g_print("no match\n");
+                    g_print("Entry in method array is not a string.");
                 }
                 return FALSE;
-	}
+            }
+
+            string = (gchar*) json_string_value (val);
+            if ((strcmp (string, "") != 0) && g_pattern_match_simple (string, comparison)) {
+                if (verbose) {
+                    g_print("was a match\n");
+                }
+                return TRUE;
+            }
+        }
+    } else if (json_is_string (json_entry)) {
+        string = (gchar*) json_string_value (json_entry);
+        return compare_entry(comparison, string);
+    }
+
+    return FALSE;
 }
+
 
 /*! \brief Decide if a message is allowed
  *
@@ -252,7 +308,7 @@ gboolean is_allowed (const char *direction,
 		direction_ok   = match_rule (rule, "direction",   direction);
 		interface_ok   = match_rule (rule, "interface",   interface);
 		object_path_ok = match_rule (rule, "object-path", path);
-		method_ok      = match_rule (rule, "method",      member);
+		method_ok      = match_method(rule, member);
 
 		/* All entries matched for the rule */
 		if (direction_ok   &&
