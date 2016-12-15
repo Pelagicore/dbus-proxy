@@ -179,7 +179,7 @@ out:
  * \return TRUE       if the rule matches the comparison
  * \return FALSE      if there is no match
  */
-inline gboolean compare_entry(const char *comparison, const gchar  *string) {
+gboolean compare_entry(const char *comparison, const gchar  *string) {
 	if (verbose) {
 	    g_print("will try matching %s with %s\n", string, comparison);
     }
