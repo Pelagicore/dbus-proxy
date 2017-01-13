@@ -107,6 +107,10 @@ junit xml.
 Resolving dependencies and making virtualbox work on your system varies in how it's done
 of course. Some systems need to disable safe boot for example.
 
+Versioning
+----------
+We use [semantic versioning](http://semver.org).
+
 
 Copyright and license
 ---------------------
