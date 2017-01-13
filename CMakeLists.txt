@@ -30,6 +30,12 @@ pkg_check_modules(DEPENDENCIES REQUIRED dbus-1 dbus-glib-1 jansson)
 add_definitions(${DEPENDENCIES_CFLAGS_OTHER})
 include_directories(${DEPENDENCIES_INCLUDE_DIRS})
 
+set(${PROJECT_NAME}_MAJOR_VERSION 1)
+set(${PROJECT_NAME}_MINOR_VERSION 0)
+set(${PROJECT_NAME}_PATCH_LEVEL 0)
+set(VERSION ${${PROJECT_NAME}_MAJOR_VERSION}.${${PROJECT_NAME}_MINOR_VERSION}.${${PROJECT_NAME}_PATCH_LEVEL})
+add_definitions(-DPACKAGE_VERSION="${VERSION}")
+
 add_executable(dbus-proxy
 	src/proxy.c
 )

@@ -687,17 +687,30 @@ int parse_json_from_stdin (const char *section) {
 	return retval;
 }
 
+void print_usage()
+{
+    g_print("dbus-proxy, version %s\n", PACKAGE_VERSION);
+    g_print("Usage: dbus-proxy address session|system\n"
+            "waits for JSON conf at stdin.\n");
+}
+
 int main(int argc, char *argv[]) {
 	GMainLoop *mainloop = NULL;
 	GError    *error    = NULL;
 
-	/* Extract address */
+    /* Support --version */
+    if (argc == 2 && strcmp(argv[1], "--version") == 0) {
+        print_usage();
+        exit(0);
+    }
+
+    /* Check for right number of args */
 	if (argc < 3) {
-		g_print("Usage: dbus-proxy address session|system\n"
-		        "waits for JSON conf at stdin.\n");
+        print_usage();
 		exit(1);
 	}
 
+	/* Extract address */
 	address = g_strconcat("unix:path=", argv[1], NULL);
 	if (strcmp (argv[2], "system") == 0) {
 		bus = DBUS_BUS_SYSTEM;
@@ -714,6 +727,7 @@ int main(int argc, char *argv[]) {
 		exit (1);
 	}
 
+    /* Set set signal handler */
 	struct sigaction sa;
 	sa.sa_handler = &handle_sigchld;
 	sigemptyset(&sa.sa_mask);
