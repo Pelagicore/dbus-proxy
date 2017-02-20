@@ -557,6 +557,111 @@ class TestProxyMethods(object):
         captured_stdout = dbus_send_process.communicate()[0]
         assert "My unique key" in captured_stdout
 
+    METHOD_ON_TOP = """
+    {
+        "dbus-gateway-config-session": [{
+            "direction": "*",
+            "interface": "*",
+            "object-path": "*",
+            "method": ["Method2", "Method3", "Method1", "Method4"]
+        }],
+        "dbus-gateway-config-system": []
+    }
+    """
+
+    METHOD_ON_BOTTOM = """
+    {
+        "dbus-gateway-config-session": [{
+            "direction": "*",
+            "interface": "*",
+            "object-path": "*",
+            "method": ["Method4", "Method3", "Method1", "Method2"]
+        }],
+        "dbus-gateway-config-system": []
+    }
+    """
+
+    METHOD_IN_THE_MIDDLE = """
+    {
+        "dbus-gateway-config-session": [{
+            "direction": "*",
+            "interface": "*",
+            "object-path": "*",
+            "method": ["Method4", "Method2", "Method1", "Method3"]
+        }],
+        "dbus-gateway-config-system": []
+    }
+    """
+
+    @pytest.mark.parametrize("config", [
+        METHOD_ON_TOP,
+        METHOD_ON_BOTTOM,
+        METHOD_IN_THE_MIDDLE
+    ])
+    def test_method_order(self, session_bus, service_on_outside, dbus_proxy, config):
+        """ This method is for testing order of the method in a list form
+            It is ecpected that the order of the method in the list does not matter
+        """
+
+        dbus_proxy.set_config(config)
+        dbus_send_command = [
+            "dbus-send",
+            "--address=" + dbus_proxy.INSIDE_SOCKET,
+            "--print-reply",
+            "--dest=" + stubs.BUS_NAME,
+            stubs.OPATH_1,
+            stubs.IFACE_1 + "." + stubs.EXT_1 + "." + stubs.EXT_2 + "." + stubs.METHOD_2,
+            'string:"My unique key"']
+
+        environment = environ.copy()
+        dbus_send_process = Popen(dbus_send_command,
+                                  env=environment,
+                                  stdout=PIPE)
+        captured_stdout = dbus_send_process.communicate()[0]
+        assert "My unique key" in captured_stdout
+
+    CONF_AVAILABLE_METHODS = """
+    {
+        "dbus-gateway-config-session": [{
+            "direction": "*",
+            "interface": "*",
+            "object-path": "*",
+            "method": ["Method1", "Method2"]
+        }],
+        "dbus-gateway-config-system": []
+    }
+    """
+
+    @pytest.mark.parametrize("config", [CONF_AVAILABLE_METHODS])
+    def test_all_available_methods(self, session_bus, service_on_outside, dbus_proxy, config):
+        """ This method is for testing all available methods in a list form
+        """
+
+        dbus_proxy.set_config(config)
+
+        def dbus_process(interface, message):
+            dbus_send_command = [
+                "dbus-send",
+                "--address=" + dbus_proxy.INSIDE_SOCKET,
+                "--print-reply",
+                "--dest=" + stubs.BUS_NAME,
+                stubs.OPATH_1,
+                interface,
+                message]
+
+            environment = environ.copy()
+            dbus_send_process = Popen(dbus_send_command,
+                                      env=environment,
+                                      stdout=PIPE)
+            captured_stdout = dbus_send_process.communicate()[0]
+            return captured_stdout
+
+        assert "My unique key 2" in dbus_process(stubs.IFACE_1 + "." + stubs.EXT_1 + "." + stubs.EXT_2 + "." + stubs.METHOD_2,
+                                                 'string:"My unique key 2"')
+
+        assert "My unique key 1" in dbus_process(stubs.IFACE_1 + "." + stubs.EXT_1 + "." + stubs.METHOD_1,
+                                                 'string:"My unique key 1"')
+
 
 class TestProxyFiltersOpath(object):
     """ some comment here
