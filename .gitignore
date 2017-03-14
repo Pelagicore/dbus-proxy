@@ -1,3 +1,11 @@
 *.swp
 *.swo
 build
+
+.vagrant/
+component-test/__pycache__/
+component-test/component-test-results.xml
+component-test/conftest.pyc
+component-test/service_stubs.pyc
+ubuntu-*-console.log
+

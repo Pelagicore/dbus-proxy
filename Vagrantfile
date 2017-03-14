@@ -23,13 +23,16 @@ ram = 4 #GB
 cpus = 3
 
 Vagrant.configure(2) do |config|
-    config.vm.box = "debian/contrib-jessie64"
+    config.vm.box = "ubuntu/xenial64"
     config.vm.provider "virtualbox" do |vb|
         vb.customize [ "guestproperty", "set", :id, "/VirtualBox/GuestAdd/VBoxService/--timesync-set-threshold", 200 ]
     end
 
     # Sync the repo root with this path in the VM
-    config.vm.synced_folder "./", "/home/vagrant/dbus-proxy", create: true
+    config.vm.synced_folder "./", "/home/ubuntu/dbus-proxy", create: true
+
+    # Fix the tty for the root user
+    config.vm.provision "shell", privileged: true, path: "vagrant-cookbook/system-config/fix-tty.sh"
 
     # Workaround for some bad network stacks
     config.vm.provision "shell", privileged: false, path: "vagrant-cookbook/utils/keepalive.sh"
@@ -40,14 +43,8 @@ Vagrant.configure(2) do |config|
             args: [ENV['APT_CACHE_SERVER']],
             path: "vagrant-cookbook/system-config/apt-cacher.sh"
     end
+    config.vm.provision "shell", inline: "apt-get update"
 
-    # Select the best apt mirror for our debian release
-    config.vm.provision "shell",
-        args: ["jessie"],
-        path: "vagrant-cookbook/system-config/select-apt-mirror.sh"
-
-    # Upgrade machine to testing distro & install build dependencies
-    config.vm.provision "shell", path: "vagrant-cookbook/deps/testing-upgrade.sh"
     config.vm.provision "shell", path: "vagrant-cookbook/deps/common-build-dependencies.sh"
     config.vm.provision "shell", path: "vagrant-cookbook/deps/common-run-dependencies.sh"
     config.vm.provision "shell", path: "vagrant-cookbook/deps/sphinx-dependencies.sh"
