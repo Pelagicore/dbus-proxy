@@ -18,10 +18,6 @@
 #
 # For further information see LICENSE
 
-
-ram = 4 #GB
-cpus = 3
-
 Vagrant.configure(2) do |config|
     config.vm.box = "ubuntu/xenial64"
     config.vm.provider "virtualbox" do |vb|
@@ -54,16 +50,6 @@ Vagrant.configure(2) do |config|
 
     # Install dependencies for py.test and D-Bus testing
     config.vm.provision "shell", path: "vagrant-cookbook/deps/pytest-and-dbus-testing-dependencies.sh"
-
-    # Build and install project
-    config.vm.provision "shell", privileged: false,
-        args: ["dbus-proxy"],
-        path: "vagrant-cookbook/build/cmake-builder.sh"
-
-    config.vm.provision "shell", privileged: false, inline: <<-SHELL
-        cd dbus-proxy/component-test
-        py.test -v --junitxml=component-test-results.xml
-    SHELL
 
 end
 

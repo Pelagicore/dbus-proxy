@@ -1,6 +1,7 @@
 *.swp
 *.swo
 build
+clang
 
 .vagrant/
 component-test/__pycache__/
