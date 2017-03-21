@@ -98,7 +98,7 @@ DBusHandlerResult filter_cb (DBusConnection *conn,
                  dbus_g_connection_get_connection(master_conn));
 
         if (verbose) {
-            g_print("Hello received\n");
+            g_message("Hello received\n");
         }
 
         welcome = dbus_message_new_method_return (msg);
@@ -106,7 +106,7 @@ DBusHandlerResult filter_cb (DBusConnection *conn,
                                        DBUS_TYPE_STRING,
                                        &dbus_local_name,
                                        DBUS_TYPE_INVALID)) {
-            g_printerr("Cannot reply to Hello message\n");
+            g_error("Cannot reply to Hello message\n");
             exit(1);
         }
         dbus_connection_send(conn, welcome, &serial);
@@ -125,7 +125,7 @@ DBusHandlerResult filter_cb (DBusConnection *conn,
 
         /* connection was disconnected */
         if (verbose) {
-            g_print("connection was disconnected\n");
+            g_message("connection was disconnected\n");
         }
 
         dbus_connection_close (dbus_conn);
@@ -149,22 +149,21 @@ DBusHandlerResult filter_cb (DBusConnection *conn,
                           dbus_message_get_path      (msg),
                           dbus_message_get_member    (msg)))
     {
-        g_print ("Accepted call to '%s' from "
-                        "client to '%s' on '%s'.\n",
-                 dbus_message_get_member   (msg),
-                 dbus_message_get_interface(msg),
-                 dbus_message_get_path     (msg));
+        g_message("Accepted call to '%s' from client to '%s' on '%s'.\n",
+                  dbus_message_get_member   (msg),
+                  dbus_message_get_interface(msg),
+                  dbus_message_get_path     (msg));
 
         dbus_connection_send (
                         dbus_g_connection_get_connection (master_conn),
                         msg,
                         &serial);
     } else {
-        g_print ("Rejected call to '%s' from "
+        g_message("Rejected call to '%s' from "
                         "client to '%s' on '%s'.\n",
-                 dbus_message_get_member    (msg),
-                 dbus_message_get_interface (msg),
-                 dbus_message_get_path      (msg));
+                  dbus_message_get_member    (msg),
+                  dbus_message_get_interface (msg),
+                  dbus_message_get_path      (msg));
         retval = DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
     }
 
@@ -181,17 +180,17 @@ out:
  */
 gboolean compare_entry(const char *comparison, const gchar  *string) {
     if (verbose) {
-        g_print("will try matching %s with %s\n", string, comparison);
+        g_message("will try matching %s with %s\n", string, comparison);
     }
 
     if ((strcmp (string, "") != 0) && g_pattern_match_simple (string, comparison)) {
         if (verbose) {
-            g_print("was a match\n");
+            g_message("was a match\n");
         }
         return TRUE;
     } else {
         if (verbose) {
-            g_print("no match\n");
+            g_message("no match\n");
         }
         return FALSE;
     }
@@ -249,7 +248,7 @@ gboolean match_method(const json_t *rule, const char *comparison)
         json_array_foreach(json_entry, ix, val) {
             if (!json_is_string(val)) {
                 if (verbose) {
-                    g_print("Entry in method array is not a string.");
+                    g_message("Entry in method array is not a string.");
                 }
                 return FALSE;
             }
@@ -257,7 +256,7 @@ gboolean match_method(const json_t *rule, const char *comparison)
             string = (gchar*) json_string_value (val);
             if ((strcmp (string, "") != 0) && g_pattern_match_simple (string, comparison)) {
                 if (verbose) {
-                    g_print("was a match\n");
+                    g_message("was a match\n");
                 }
                 return TRUE;
             }
@@ -328,8 +327,8 @@ gboolean is_allowed (const char *direction,
              object_path_ok &&
              method_ok)
         {
-            g_print("Direction '%s' does not match but "
-                    "everything else does\n", direction);
+            g_message("Direction '%s' does not match but "
+                      "everything else does\n", direction);
         }
     }
 
@@ -368,7 +367,7 @@ DBusHandlerResult master_filter_cb (DBusConnection *conn,
         const char *dest = dbus_message_get_destination(msg);
         if (verbose)
         {
-            g_print ("NameAcquired received by %s\n", dest);
+            g_message("NameAcquired received by %s\n", dest);
         }
 
         if (dest != NULL &&
@@ -376,9 +375,9 @@ DBusHandlerResult master_filter_cb (DBusConnection *conn,
         {
             if (verbose)
             {
-                g_print("New connection's unique name ('%s')"
-                        " was previously known as an eavesdropper."
-                        " Removed old entry...\n", dest);
+                g_message("New connection's unique name ('%s')"
+                          " was previously known as an eavesdropper."
+                          " Removed old entry...\n", dest);
             }
             remove_name_from_known_eavesdroppers(dest);
         }
@@ -401,24 +400,24 @@ DBusHandlerResult master_filter_cb (DBusConnection *conn,
     } else if (is_conn_known_eavesdropper (dbus_bus_get_unique_name(conn)))
     {
         if (verbose) {
-            g_print ("'%s' is an eavesdropping connection, let it go...\n",
-                 dbus_bus_get_unique_name(conn));
+            g_message("'%s' is an eavesdropping connection, let it go...\n",
+                      dbus_bus_get_unique_name(conn));
         }
     } else if (is_allowed("incoming",
                           dbus_message_get_interface (msg),
                           dbus_message_get_path      (msg),
                           dbus_message_get_member    (msg)))
     {
-        g_print("Accepted call to '%s' from server to '%s' on '%s'.\n",
-                dbus_message_get_member    (msg),
-                dbus_message_get_interface (msg),
-                dbus_message_get_path      (msg));
+        g_message("Accepted call to '%s' from server to '%s' on '%s'.\n",
+                  dbus_message_get_member    (msg),
+                  dbus_message_get_interface (msg),
+                  dbus_message_get_path      (msg));
         dbus_connection_send(dbus_conn, msg, &serial);
     } else {
-        g_print("Rejected call to '%s' from server to '%s' on '%s'.\n",
-                dbus_message_get_member    (msg),
-                dbus_message_get_interface (msg),
-                dbus_message_get_path      (msg));
+        g_message("Rejected call to '%s' from server to '%s' on '%s'.\n",
+                  dbus_message_get_member    (msg),
+                  dbus_message_get_interface (msg),
+                  dbus_message_get_path      (msg));
         retval = DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
     }
 
@@ -467,9 +466,9 @@ gboolean is_incoming_eavesdropping (DBusMessage *msg)
             is_eavesdropping = TRUE;
             if (verbose)
             {
-                g_print ("'%s' AddMatch-args: \"%s\"\n",
-                         dbus_message_get_sender(msg),
-                         msg_arguments);
+                g_message("'%s' AddMatch-args: \"%s\"\n",
+                          dbus_message_get_sender(msg),
+                          msg_arguments);
             }
         }
         }
@@ -553,32 +552,33 @@ void new_connection_cb (DBusServer *server, DBusConnection *conn, void *data) {
     pid    = getpid();
 
     if (forked != 0) {
-        if (verbose)
-            g_print ("in main process, pid: %d\n", pid);
+        if (verbose) {
+            g_message("in main process, pid: %d\n", pid);
+        }
 
         /* Reconfigure the master socket as forking will break it */
         start_bus();
         return;
     } else {
-        if (verbose)
-            g_print ("in child process, pid: %d\n", pid);
+        if (verbose) {
+            g_message("in child process, pid: %d\n", pid);
+        }
     }
 
     if (master_conn != NULL) {
-        g_print ("master_conn already initialized\n");
+        g_message("master_conn already initialized\n");
         exit (1);
     }
 
     if (dbus_conn != NULL) {
-        g_print("dbus_conn already initialized\n");
+        g_message("dbus_conn already initialized\n");
         exit (1);
     }
 
     /* Init master connection */
     master_conn = dbus_g_bus_get (bus, &error);
     if (!master_conn) {
-        g_printerr ("Failed to open connection to bus: %s\n",
-                    error->message);
+        g_error("Failed to open connection to bus: %s\n", error->message);
         g_clear_error (&error);
         exit(1);
     }
@@ -590,7 +590,7 @@ void new_connection_cb (DBusServer *server, DBusConnection *conn, void *data) {
             NULL);
 
     if (verbose) {
-        g_print("New connection\n");
+        g_message("New connection\n");
     }
 
     dbus_connection_ref               (conn);
@@ -617,7 +617,7 @@ void start_bus() {
     }
     dbus_srv = dbus_server_listen (address, &error);
     if (dbus_srv == NULL) {
-        g_printerr("Cannot listen on %s\n", address);
+        g_error("Cannot listen on %s\n", address);
         exit(1);
     }
 
@@ -656,7 +656,7 @@ int parse_json_from_stdin (const char *section) {
         if (!root) {
             /* If no config was found this is an error, otherwise it's normal */
             if (!config_found) {
-                g_printerr ("error: on line %d: %s\n", error.line, error.text);
+                g_error("error: on line %d: %s\n", error.line, error.text);
                 retval = 1;
             }
             break;
@@ -669,7 +669,7 @@ int parse_json_from_stdin (const char *section) {
         config = json_object_get (root, full_section);
 
         if (!json_is_array(config)) {
-            g_printerr("error: %s is not present in config, or not an array. "
+            g_error("error: %s is not present in config, or not an array. "
                     "Fix your config\n", full_section);
             json_decref (config);
             retval = 1;
@@ -679,7 +679,7 @@ int parse_json_from_stdin (const char *section) {
             json_filters = config;
         } else {
             if (0 != json_array_extend(json_filters, config)){
-                g_printerr("Error extending config array\n");
+                g_error("Error extending config array\n");
             }
         }
     } while (root);
@@ -693,6 +693,53 @@ void print_usage()
     g_print("Usage: dbus-proxy address session|system\n"
             "waits for JSON conf at stdin.\n");
 }
+
+
+#ifdef LOG_TO_FILE
+FILE *log_file;
+
+gboolean log_file_is_open() {
+    return log_file ? TRUE : FALSE;
+}
+
+gboolean open_log_file() {
+    log_file = fopen("/tmp/dbus-proxy.log", "a");
+
+    if (NULL == log_file) {
+        return FALSE;
+    }
+
+    return TRUE;
+}
+
+gboolean close_log_file() {
+    if (NULL == log_file) {
+        return TRUE;
+    }
+
+    int res = fclose(log_file);
+
+    if (res != 0) {
+        return FALSE;
+    }
+
+    log_file = NULL;
+
+    return TRUE;
+}
+
+void log_handler(const gchar *log_domain,
+                 GLogLevelFlags log_level,
+                 const gchar *message,
+                 gpointer user_data)
+{
+    if (log_file_is_open()) {
+        fprintf(log_file, "%s\n", message);
+        fflush(log_file);
+    }
+}
+#endif
+
 
 int main(int argc, char *argv[]) {
     GMainLoop *mainloop = NULL;
@@ -717,15 +764,18 @@ int main(int argc, char *argv[]) {
     } else if (strcmp(argv[2], "session") == 0) {
         bus = DBUS_BUS_SESSION;
     } else {
-        g_print ("Must give bus type as second argument (either session or system).\n");
+        g_message("Must give bus type as second argument (either session or system).\n");
         exit (1);
     }
 
-    /* Parse JSON */
-    if (parse_json_from_stdin (argv[2]) == 1){
-        g_print ("Something wrong with JSON file. Exiting...\n");
-        exit (1);
+#ifdef LOG_TO_FILE
+    /* Set log handler for e.g. g_message(), g_warning() etc. */
+    if (!open_log_file()) {
+        g_error("Could not open log file\n");
+        exit(1);
     }
+    g_log_set_handler(NULL, G_LOG_LEVEL_MASK, log_handler, NULL);
+#endif
 
     /* Set set signal handler */
     struct sigaction sa;
@@ -737,10 +787,22 @@ int main(int argc, char *argv[]) {
         exit(1);
     }
 
-    /* Start listening */
-    start_bus ();
-    mainloop = g_main_loop_new (NULL, FALSE);
-    g_main_loop_run (mainloop);
+	/* Parse JSON */
+	if (parse_json_from_stdin (argv[2]) == 1){
+		g_error("Something wrong with JSON file. Exiting...\n");
+		exit (1);
+	}
 
-    return 0;
+	/* Start listening */
+	start_bus ();
+	mainloop = g_main_loop_new (NULL, FALSE);
+	g_main_loop_run (mainloop);
+
+#ifdef LOG_TO_FILE
+    if (!close_log_file()) {
+        g_message("Could not close log file\n");
+    }
+#endif
+
+	return 0;
 }

@@ -26,6 +26,11 @@ $ make
 $ make install
 ```
 
+The following cmake options are available:
+
+* `ENABLE_LOG_TO_FILE` - makes `dbus-proxy` log to "/tmp/dbus-proxy.log"
+
+
 ### Building in Vagrant
 For some purposes it is convenient to build in a virtual machine, e.g. in order to
 have a consistent environment, integration into CI systems etc. `dbus-proxy` comes

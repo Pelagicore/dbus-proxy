@@ -31,10 +31,17 @@ add_definitions(${DEPENDENCIES_CFLAGS_OTHER})
 include_directories(${DEPENDENCIES_INCLUDE_DIRS})
 
 set(${PROJECT_NAME}_MAJOR_VERSION 1)
-set(${PROJECT_NAME}_MINOR_VERSION 0)
+set(${PROJECT_NAME}_MINOR_VERSION 1)
 set(${PROJECT_NAME}_PATCH_LEVEL 0)
 set(VERSION ${${PROJECT_NAME}_MAJOR_VERSION}.${${PROJECT_NAME}_MINOR_VERSION}.${${PROJECT_NAME}_PATCH_LEVEL})
 add_definitions(-DPACKAGE_VERSION="${VERSION}")
+
+
+option(ENABLE_LOG_TO_FILE "Enables logging to file instead of stdout/stderr" OFF)
+
+if(ENABLE_LOG_TO_FILE)
+    add_definitions(-DLOG_TO_FILE)
+endif()
 
 add_executable(dbus-proxy
 	src/proxy.c
