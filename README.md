@@ -30,6 +30,10 @@ The following cmake options are available:
 
 * `ENABLE_LOG_TO_FILE` - makes `dbus-proxy` log to "/tmp/dbus-proxy.log"
 
+Please note that the `ENABLE_LOG_TO_FILE` option should not be used in other
+contexts than troubleshooting and debugging. It's not suitable for production
+builds and the component tests are not expected to work when built with this
+option.
 
 ### Building in Vagrant
 For some purposes it is convenient to build in a virtual machine, e.g. in order to
