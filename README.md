@@ -29,11 +29,15 @@ $ make install
 The following cmake options are available:
 
 * `ENABLE_LOG_TO_FILE` - makes `dbus-proxy` log to "/tmp/dbus-proxy.log"
+* `ENABLE_LOG_TO_STDOUT` - makes `dbus-proxy` log to stdout/stderr
 
-Please note that the `ENABLE_LOG_TO_FILE` option should not be used in other
+Both options will default to OFF, and logging to stdout will take precedence
+over logging to file if both are enabled.
+
+Please note that the `ENABLE_LOG_TO_*` options should not be used in other
 contexts than troubleshooting and debugging. It's not suitable for production
-builds and the component tests are not expected to work when built with this
-option.
+builds and the component tests are not expected to work when built with these
+options.
 
 ### Building in Vagrant
 For some purposes it is convenient to build in a virtual machine, e.g. in order to
@@ -58,6 +62,12 @@ You can then interact with the socket via, for instance D-Feet or dbus-send.
 
 Configuration files
 -------------------
+Please note that the below description is for when running `dbus-proxy` manually,
+when it might be convenient to redirect a file with the config. Generally `dbus-proxy`
+is meant to be spawned by another process that writes to stdin of `dbus-proxy`. When
+a file is redirected, the content must be one line with no newline characters apart
+from the last character which needs to be a newline.
+
 `dbus-proxy` is configured using JSON files.
 
 The content of the JSON file can vary as long as the "dbus-gateway-config-<bustype>"

@@ -23,14 +23,23 @@
 
 
 #include "proxy.h"
-#include <signal.h>
+
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
 #include <string.h>
+
 #include <sys/wait.h>
-#include <stdlib.h>
-#include <dbus/dbus-glib-lowlevel.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+
+#include <fcntl.h>
+#include <signal.h>
+#include <errno.h>
+
 #include <jansson.h>
+#include <dbus/dbus-glib-lowlevel.h>
+
 
 /*! the connection to dbus_srv from a local client, or NULL */
 DBusConnection  *dbus_conn    = NULL;
@@ -55,8 +64,15 @@ DBusBusType      bus          = DBUS_BUS_SESSION;
 /*! List of connections that are to be ignored */
 GList           *eavesdropping_conns = NULL;
 
+
 void handle_sigchld(int sig) {
-    while (waitpid((pid_t)(-1), 0, WNOHANG) > 0) {}
+    g_message("Received signal SIGCHLD");
+    while (waitpid((pid_t)(-1), 0, WNOHANG) > 0) {
+        g_message("Waiting for child");
+        usleep(30);
+    }
+
+    g_message("Finished waiting for child");
 }
 
 
@@ -628,70 +644,51 @@ void start_bus() {
     dbus_server_setup_with_g_main (dbus_srv, NULL);
 }
 
-/*! \brief Read filter rules from JSON
- *
- * Populate the json_filters global variable with the filter rules read from
- * the JSON configuration which comes in via stdin
- *
- * \param section The section in the JSON config to use
- * \return 0      Upon success
- * \return 1      Upon failure
- */
-int parse_json_from_stdin (const char *section) {
-    size_t        i;
-    json_error_t  error;
-    json_t       *root, *config, *rule;
-    char         *full_section = calloc (sizeof (char), 30);
-    int           retval = 0;
-    int config_found = 0;
 
-    snprintf (full_section, 30, "dbus-gateway-config-%s", section);
+void parse_full_config(const char *config_string, const char *section) {
+    json_error_t error;
+    json_t *root;
+    json_t *config;
 
-    /* Allow multiple configuration snippets, each as it's own root obj */
-    do {
+    char *full_section = calloc(30, sizeof(char));
 
-        /* Get root JSON object */
-        root = json_loadf (stdin, JSON_DISABLE_EOF_CHECK, &error);
+    snprintf(full_section, 30, "dbus-gateway-config-%s", section);
 
-        if (!root) {
-            /* If no config was found this is an error, otherwise it's normal */
-            if (!config_found) {
-                g_error("error: on line %d: %s\n", error.line, error.text);
-                retval = 1;
-            }
-            break;
+    g_message("Parsing config");
+
+    /* Get root JSON object */
+    root = json_loads(config_string, 0, &error);
+
+    if (!root) {
+       g_error("error: on line %d: %s\n", error.line, error.text);
+       return;
+    }
+
+    /* Get array */
+    config = json_object_get(root, full_section);
+
+    g_message("%s\n", json_dumps(config, JSON_INDENT(4)));
+
+    if (!json_is_array(config)) {
+        g_error("error: %s is not present in config, or not an array. "
+                "Fix your config\n", full_section);
+        json_decref (config);
+    }
+
+    if (NULL == json_filters) {
+        json_filters = config;
+    } else {
+        if (0 != json_array_extend(json_filters, config)) {
+            g_error("Error extending config array\n");
         }
-
-        /* We have atleast one root object in file */
-        config_found = 1;
-
-        // Get array
-        config = json_object_get (root, full_section);
-
-        if (!json_is_array(config)) {
-            g_error("error: %s is not present in config, or not an array. "
-                    "Fix your config\n", full_section);
-            json_decref (config);
-            retval = 1;
-            break;
-        }
-        if (NULL == json_filters) {
-            json_filters = config;
-        } else {
-            if (0 != json_array_extend(json_filters, config)){
-                g_error("Error extending config array\n");
-            }
-        }
-    } while (root);
-
-    return retval;
+    }
 }
 
-void print_usage()
-{
+
+void print_usage() {
     g_print("dbus-proxy, version %s\n", PACKAGE_VERSION);
     g_print("Usage: dbus-proxy address session|system\n"
-            "waits for JSON conf at stdin.\n");
+            "waits for config on stdin\n");
 }
 
 
@@ -703,7 +700,10 @@ gboolean log_file_is_open() {
 }
 
 gboolean open_log_file() {
-    log_file = fopen("/tmp/dbus-proxy.log", "a");
+    char buf[30] = {0};
+    pid_t pid = getpid();
+    sprintf(buf, "/tmp/dbus-proxy-%d.log", pid);
+    log_file = fopen(buf, "a");
 
     if (NULL == log_file) {
         return FALSE;
@@ -741,9 +741,87 @@ void log_handler(const gchar *log_domain,
 #endif
 
 
+void log_handler_silent(const gchar *log_domain,
+                        GLogLevelFlags log_level,
+                        const gchar *message,
+                        gpointer user_data)
+{
+    /* Do nothing, be silent */
+    return;
+}
+
+
+/*
+ * Read data and keep listening, or stop listening when appropriate.
+ *
+ * On the event of G_IO_IN we read the config. If zero bytes are
+ * read it probably means that the writing end has closed stdin
+ * and we stop listening for more events.
+ *
+ * On the event of G_IO_HUP, the other end has probably closed
+ * stdin and we stop listening for more events.
+ *
+ * If something was read, we pass it along to be parsed as config
+ * json.
+ *
+ * Other events are not handled and will be ignored.
+ *
+ * 'data' contains the section (either "session" or "system") to
+ * parse from the config.
+ */
+static gboolean stdin_watch(GIOChannel *source,
+                            GIOCondition condition,
+                            gpointer *data)
+{
+    g_message("Got event on stdin");
+
+    if (condition & G_IO_HUP) {
+        /* Other end probably closed stdin */
+        g_message("Event was G_IO_HUP, will stop listening for events");
+
+        /* We stop listening for events at this point */
+        return FALSE;
+    }
+
+    if (condition & G_IO_IN) {
+        g_message("Event condition was G_IO_IN, will read config");
+
+        GIOStatus ret;
+        gchar *msg;
+        gsize len;
+
+        ret = g_io_channel_read_line(source, &msg, &len, NULL, NULL);
+        if (G_IO_STATUS_ERROR == ret) {
+            g_error("Error reading from channel");
+        }
+
+        if (0 == len) {
+            /* In some cases, like when redirecting a file to stdin when
+               starting dbus-proxy, we might receive a G_IO_IN event with
+               zero bytes. We stop listenting for events at this point */
+            g_message("Read zero bytes, will stop listening for events");
+
+            return FALSE;
+        }
+
+        g_message("%s", msg);
+
+        parse_full_config(msg, (const char *)data);
+
+        return TRUE;
+    }
+
+    g_message("Got unhandled event on stdin, will ignore and continue "
+              "listening for events");
+    return TRUE;
+}
+
+
 int main(int argc, char *argv[]) {
+    g_message("Starting dbus-proxy, pid: %d", getpid());
+
     GMainLoop *mainloop = NULL;
-    GError    *error    = NULL;
+    GError *error = NULL;
 
     /* Support --version */
     if (argc == 2 && strcmp(argv[1], "--version") == 0) {
@@ -768,13 +846,25 @@ int main(int argc, char *argv[]) {
         exit (1);
     }
 
+    /* Setup log handlers, if needed, for g_message, g_warning etc.
+       Default behavior is to silence the logging, unless one of the
+       two macros are set. */
 #ifdef LOG_TO_FILE
-    /* Set log handler for e.g. g_message(), g_warning() etc. */
     if (!open_log_file()) {
         g_error("Could not open log file\n");
         exit(1);
     }
-    g_log_set_handler(NULL, G_LOG_LEVEL_MASK, log_handler, NULL);
+    g_log_set_handler(NULL /*use default log domain*/,
+                      G_LOG_LEVEL_MASK,
+                      log_handler,
+                      NULL /*no need to pass data to handler*/);
+#endif
+
+#ifndef LOG_TO_STDOUT
+    g_log_set_handler(NULL /*use default log domain*/,
+                      G_LOG_LEVEL_MASK,
+                      log_handler_silent,
+                      NULL /*no need to pass data to handler*/);
 #endif
 
     /* Set set signal handler */
@@ -787,16 +877,28 @@ int main(int argc, char *argv[]) {
         exit(1);
     }
 
-	/* Parse JSON */
-	if (parse_json_from_stdin (argv[2]) == 1){
-		g_error("Something wrong with JSON file. Exiting...\n");
-		exit (1);
-	}
+    /* Remember what section of the config we should read later */
+    gpointer section = argv[2];
 
 	/* Start listening */
-	start_bus ();
-	mainloop = g_main_loop_new (NULL, FALSE);
-	g_main_loop_run (mainloop);
+	start_bus();
+
+    g_message("Setting up event listener on stdin");
+    GIOChannel *channel = g_io_channel_unix_new(STDIN_FILENO);
+    g_io_add_watch(channel,
+                   G_IO_IN | G_IO_PRI | G_IO_ERR | G_IO_HUP,
+                   (GIOFunc)stdin_watch,
+                   section);
+
+    g_message("Entering mainloop\n");
+
+    /* Start listening */
+    start_bus();
+    mainloop = g_main_loop_new(NULL /*use default context*/,
+                               FALSE /*mainloop is not currently running*/);
+    g_main_loop_run(mainloop);
+
+    g_message("Exiting dbus-proxy");
 
 #ifdef LOG_TO_FILE
     if (!close_log_file()) {

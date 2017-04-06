@@ -26,7 +26,7 @@ from os import environ
 import sys
 import tempfile
 from time import sleep
-from subprocess import Popen, call
+from subprocess import Popen, call, PIPE
 
 
 """ Component test fixtures.
@@ -129,50 +129,26 @@ def dbus_proxy(request):
 
     dbus_proxy = None
 
-    # We later redirect a named pipe to dbus-proxy (compared to redirecting a file containing
-    # the configuration). This so we can defer passing the config to a later stage so the
-    # consuming test can be responsible for that.
-    tempdir = tempfile.mkdtemp()
-    fifo_filename = os.path.join(tempdir, "dbus_proxy_fifo")
     try:
-        os.mkfifo(fifo_filename)
-    except OSError as e:
-        print "Error creating pipe for dbus-proxy fixture" + str(e)
-
-    # The 'exec' part is a workaround to make the whole process group be killed
-    # later when kill() is caled and not just the shell. This is only needed when
-    # 'shell' is set to True like in the later Popen() call below.
-    start_proxy_command = [
-        "exec",
-        " ../build/dbus-proxy",
-        " " + INSIDE_SOCKET,
-        " session",
-        " <",
-        fifo_filename
-    ]
-
-    try:
-        # For some reason shell needs to be set to True, which is the reason the command
-        # is passed as a string instead as an argument list, as recommended in the docs.
         dbus_proxy = Popen(
-            "".join(start_proxy_command),
+            ["../build/dbus-proxy", INSIDE_SOCKET, "session"],
             env=environment,
-            shell=True,
-            stdout=sys.stdout)
+            stdin=PIPE,
+            stdout=PIPE,
+            stderr=PIPE)
+
     except OSError as e:
         print "Error starting dbus-proxy: " + str(e)
         sys.exit(1)
 
     def teardown():
+        dbus_proxy.stdin.close()
         dbus_proxy.kill()
-        # dbus-proxy creates the socket passed to it as argument at startup
         os.remove(INSIDE_SOCKET)
-        os.remove(fifo_filename)
-        os.rmdir(tempdir)
 
     request.addfinalizer(teardown)
 
-    return DBusProxyHelper(fifo_filename)
+    return DBusProxyHelper(dbus_proxy)
 
 
 class DBusProxyHelper(object):
@@ -182,8 +158,8 @@ class DBusProxyHelper(object):
         a configuration string to dbus-proxy.
     """
 
-    def __init__(self, fifo):
-        self.__fifo = fifo
+    def __init__(self, proxy_process):
+        self.__proxy = proxy_process
         # Tests should get the socket paths from here
         self.INSIDE_SOCKET = "unix:path=" + INSIDE_SOCKET
         self.OUTSIDE_SOCKET = "unix:path=" + OUTSIDE_SOCKET
@@ -191,8 +167,12 @@ class DBusProxyHelper(object):
     def set_config(self, config):
         """ Write json config to dbus-proxy
         """
-        with open(self.__fifo, "w") as fh:
-            fh.write(config)
+        # The way dbus-proxy expects data means that we can't have any newlines
+        # in the config at any place except last, it has to be one non line broken
+        # string ending in one newline.
+        stripped_config = config.replace("\n", " ")
+        self.__proxy.stdin.write(stripped_config + "\n")
+
         # Allow some time for the proxy to be setup before tests start using the
         # "inside" socket.
         sleep(0.3)
