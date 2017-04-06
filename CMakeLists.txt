@@ -37,10 +37,20 @@ set(VERSION ${${PROJECT_NAME}_MAJOR_VERSION}.${${PROJECT_NAME}_MINOR_VERSION}.${
 add_definitions(-DPACKAGE_VERSION="${VERSION}")
 
 
-option(ENABLE_LOG_TO_FILE "Enables logging to file instead of stdout/stderr" OFF)
+option(ENABLE_LOG_TO_FILE "Enables logging to file" OFF)
+option(ENABLE_LOG_TO_STDOUT "Enables logging to stdout/stderr" OFF)
 
 if(ENABLE_LOG_TO_FILE)
     add_definitions(-DLOG_TO_FILE)
+endif()
+
+# Logging to stdout will trump logging to file if both are set by user
+if(ENABLE_LOG_TO_STDOUT)
+    if(ENABLE_LOG_TO_FILE)
+        remove_definitions(-DLOG_TO_FILE)
+        message(WARNING "Unsetting option to log to file since log to stdout is also enabled.")
+    endif()
+    add_definitions(-DLOG_TO_STDOUT)
 endif()
 
 add_executable(dbus-proxy
