@@ -292,6 +292,47 @@ class TestProxyRobustness(object):
     }
     """
 
+    def test_reconfiguration(self, session_bus, service_on_outside, dbus_proxy):
+        """ Assert dbus-proxy can read configs more than once.
+
+            The test sets a config more than once and asserts the configs
+            have the expected effect, i.e. they are both applied.
+        """
+        environment = environ.copy()
+
+        dbus_send_command = [
+            "dbus-send",
+            "--address=" + dbus_proxy.INSIDE_SOCKET,
+            "--print-reply",
+            "--dest=" + stubs.BUS_NAME,
+            stubs.OPATH_1,
+            stubs.IFACE_1 + "." + stubs.EXT_1 + "." + stubs.METHOD_1,
+            'string:"My unique key"']
+
+        # Configure with a restrictive config, try to call a method and assert
+        # it fails.
+        dbus_proxy.set_config(TestProxyRobustness.CONF_RESTRICT_ALL)
+
+        sleep(0.3)
+
+        dbus_send_process = Popen(dbus_send_command,
+                                  env=environment,
+                                  stdout=PIPE)
+        captured_stdout = dbus_send_process.communicate()[0]
+        assert "My unique key" not in captured_stdout
+
+        # Re-configure with a permissive config, try to call a method and assert
+        # it works.
+        dbus_proxy.set_config(TestProxyRobustness.CONF_ALLOW_ALL)
+
+        sleep(0.3)
+
+        dbus_send_process = Popen(dbus_send_command,
+                                  env=environment,
+                                  stdout=PIPE)
+        captured_stdout = dbus_send_process.communicate()[0]
+        assert "My unique key" in captured_stdout
+
     @pytest.mark.parametrize("config", [CONF_ALLOW_ALL])
     def test_proxy_handles_many_calls(self, session_bus, service_on_outside, dbus_proxy, config):
         """ Assert dbus-proxy doesn't crash due to fd and zombie process leaks.
