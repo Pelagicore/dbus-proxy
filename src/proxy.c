@@ -858,9 +858,12 @@ int main(int argc, char *argv[]) {
                       G_LOG_LEVEL_MASK,
                       log_handler,
                       NULL /*no need to pass data to handler*/);
-#endif
 
-#ifndef LOG_TO_STDOUT
+#elif LOG_TO_STDOUT
+    /* Do nothing since the default behavior is to output to stdout/stderr */
+
+#else
+    /* Set log handler that silences all logging */
     g_log_set_handler(NULL /*use default log domain*/,
                       G_LOG_LEVEL_MASK,
                       log_handler_silent,
