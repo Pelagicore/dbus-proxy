@@ -21,6 +21,8 @@
 
 import pytest
 
+import dbus
+
 from os import environ
 from subprocess import Popen, PIPE
 from time import sleep
@@ -730,14 +732,14 @@ class TestProxyFiltersOpath(object):
                                                                 stubs.OPATH_2,
                                                                 stubs.IFACE_2,
                                                                 False)])
-    def test_diallowed_opath_accessibilty(self,
-                                          session_bus,
-                                          service_on_outside,
-                                          dbus_proxy,
-                                          config,
-                                          opath,
-                                          iface,
-                                          expected):
+    def test_disallowed_opath_accessibilty(self,
+                                           session_bus,
+                                           service_on_outside,
+                                           dbus_proxy,
+                                           config,
+                                           opath,
+                                           iface,
+                                           expected):
         """ Assert calls on disallowed object path are not accepted.
         """
 
@@ -758,6 +760,157 @@ class TestProxyFiltersOpath(object):
                                   stdout=PIPE)
         captured_stdout = dbus_send_process.communicate()[0]
         assert ("My unique key" in captured_stdout) == expected
+
+
+CONF_ALLOW_ONLY_OBJECT1 = """
+{{
+    "dbus-gateway-config-session": [{{
+        "direction": "outgoing",
+        "interface": "{iface_1}",
+        "object-path": "{opath_1}",
+        "method": "{method_1}"
+    }}],
+    "dbus-gateway-config-system": []
+}}
+""".format(**{
+    "iface_1": stubs.IFACE_1,
+    "opath_1": stubs.OPATH_1,
+    "method_1": stubs.METHOD_1
+})
+
+CONF_ALLOW_GETALL_ON_OBJECT1 = """
+{{
+    "dbus-gateway-config-session": [{{
+        "direction": "outgoing",
+        "interface": "org.freedesktop.DBus.Properties",
+        "object-path": "{opath_1}",
+        "method": "GetAll"
+    }}],
+    "dbus-gateway-config-system": []
+}}
+""".format(**{
+    "opath_1": stubs.OPATH_1
+})
+
+CONF_ALLOW_OBJECT2 = """
+{{
+    "dbus-gateway-config-session": [{{
+        "direction": "outgoing",
+        "interface": "{iface_2}",
+        "object-path": "{opath_2}",
+        "method": "{method_2}"
+    }}],
+    "dbus-gateway-config-system": []
+}}
+""".format(**{
+    "iface_2": stubs.IFACE_2,
+    "opath_2": stubs.OPATH_2,
+    "method_2": stubs.METHOD_2
+})
+
+class TestProxyBehaviorForOrgFreedesktopPropertiesIface(object):
+    """ This class tests various aspects of how dbus-proxy behaves
+        with regards to org.freedesktop.DBus.Properties, e.g GetAll.
+
+        org.freedesktop.DBus is treated as a special case by dbus-proxy
+        and these tests assert that the behavior is as expected.
+    """
+
+    def test_getting_properties_when_GetAll_is_disallowed_fails(self,
+                                                                session_bus,
+                                                                service_on_outside,
+                                                                dbus_proxy):
+        """ Assert GetAll can not be called on a service which is disallowed by
+            the proxy config. The GetAll implementation prints out a string which
+            can be used to assert if the method was called or not.
+
+            NOTE: Even if the org.freedesktop.DBus interface is a special
+                  case in the proxy, the org.freedesktop.DBus.Properties is not.
+                  This means that this test is essentially just testing that we
+                  cant access a method (GetAll) on an interface which is not
+                  opened by the proxy (org.freedesktop.DBus.Properties).
+                  However, since the handling of properties can be a security
+                  hole, and because we have corner cases with specially treated
+                  interfaces, this test is here to catch regressions with regards
+                  to the properties handling.
+        """
+        dbus_proxy.set_config(CONF_ALLOW_ONLY_OBJECT1)
+
+        dbus_send_command = [
+            "dbus-send",
+            "--address=" + dbus_proxy.INSIDE_SOCKET,
+            "--print-reply",
+            "--dest=" + stubs.BUS_NAME,
+            stubs.OPATH_1,
+            dbus.PROPERTIES_IFACE + ".GetAll",
+            'string:"org.doesnotmatter"']
+
+        environment = environ.copy()
+        dbus_send_process = Popen(dbus_send_command,
+                                  env=environment,
+                                  stdout=PIPE)
+        captured_stdout = dbus_send_process.communicate()[0]
+
+        assert "my_value_2" not in captured_stdout
+
+    def test_getting_properties_on_disallowed_service_fails(self,
+                                                            session_bus,
+                                                            service_on_outside,
+                                                            dbus_proxy):
+        """ Assert GetAll can not be called on a service which is disallowed by
+            the proxy config. The GetAll implementation prints out a string which
+            can be used to assert if the method was called or not.
+
+            The configs will allow only one specific interface and method on
+            Object1 and will allow getting properties on that object as well.
+            Specific interface and method is allowed on Object2 as well, but
+            not getting properties.
+
+            The test asserts that properties can be gotten from Object1 but
+            not from Object2.
+
+            NOTE: This test essentially tests that filtering on interface/method
+                  etc. works. However, since handling properties can be a
+                  securtiy hole, we can catch regressions in the property handling
+                  behavior here.
+        """
+        dbus_proxy.set_config(CONF_ALLOW_ONLY_OBJECT1)
+        dbus_proxy.set_config(CONF_ALLOW_GETALL_ON_OBJECT1)
+        dbus_proxy.set_config(CONF_ALLOW_OBJECT2)
+
+        dbus_send_command = [
+            "dbus-send",
+            "--address=" + dbus_proxy.INSIDE_SOCKET,
+            "--print-reply",
+            "--dest=" + stubs.BUS_NAME,
+            stubs.OPATH_1,
+            dbus.PROPERTIES_IFACE + ".GetAll",
+            'string:"org.doesnotmatter"']
+
+        environment = environ.copy()
+        dbus_send_process = Popen(dbus_send_command,
+                                  env=environment,
+                                  stdout=PIPE)
+        captured_stdout = dbus_send_process.communicate()[0]
+
+        assert "my_value_2" in captured_stdout
+
+        dbus_send_command = [
+            "dbus-send",
+            "--address=" + dbus_proxy.INSIDE_SOCKET,
+            "--print-reply",
+            "--dest=" + stubs.BUS_NAME,
+            stubs.OPATH_2,
+            dbus.PROPERTIES_IFACE + ".GetAll",
+            'string:"org.doesnotmatter"']
+
+        environment = environ.copy()
+        dbus_send_process = Popen(dbus_send_command,
+                                  env=environment,
+                                  stdout=PIPE)
+        captured_stdout = dbus_send_process.communicate()[0]
+
+        assert "my_value_2" not in captured_stdout
 
 
 class DBusRemoteObjectHelper(object):

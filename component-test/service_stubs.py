@@ -56,6 +56,9 @@ DBusGMainLoop(set_as_default=True)
             Method1
         com.service.TestInterface2._1._2
             Method2
+
+    Object1 also implements GetAll and Get on the "org.freedesktop.DBus.Properties"
+    interface. Object2 implements GetAll on the same interface.
 """
 
 DEBUG = False
@@ -98,6 +101,10 @@ class TestService1(dbus.service.Object):
         name = dbus.service.BusName(BUS_NAME, bus=self.__bus)
         dbus.service.Object.__init__(self, name, OPATH_1)
 
+        # Some nonsensical properties so there is something to return
+        # from GetAll
+        self.__properties = {"MyKey1": "my_value_1", "MyKey2": "my_value_2"}
+
     @dbus.service.method(IFACE_1 + "." + EXT_1,
                          in_signature="s", out_signature="s")
     def Method1(self, message):
@@ -112,6 +119,20 @@ class TestService1(dbus.service.Object):
               "was called with message: \"" + message + "\"")
         return "Test said: \"" + message + "\""
 
+    @dbus.service.method(dbus.PROPERTIES_IFACE,
+                         in_signature="ss", out_signature="v")
+    def Get(self, iface, key):
+        debug(dbus.PROPERTIES_IFACE + "." + "Get " +
+              "was called with argument \"" + iface + "\"")
+        return self.__properties[key]
+
+    @dbus.service.method(dbus.PROPERTIES_IFACE,
+                         in_signature="s", out_signature="a{sv}")
+    def GetAll(self, iface):
+        debug(dbus.PROPERTIES_IFACE + "." + "GetAll " +
+              "was called with argument \"" + iface + "\"")
+        return self.__properties
+
 
 class TestService2(dbus.service.Object):
     """This D-Bus service exposes multiple interfaces on one
@@ -121,6 +142,10 @@ class TestService2(dbus.service.Object):
         self.__bus = bus
         name = dbus.service.BusName(BUS_NAME, bus=self.__bus)
         dbus.service.Object.__init__(self, name, OPATH_2)
+
+        # Some nonsensical properties so there is something to return
+        # from GetAll
+        self.__properties = {"MyKey1": "my_value_1", "MyKey2": "my_value_2"}
 
     @dbus.service.method(IFACE_2 + "." + EXT_1,
                          in_signature="s", out_signature="s")
@@ -135,6 +160,13 @@ class TestService2(dbus.service.Object):
         debug(IFACE_2 + "." + EXT_1 + "." + EXT_2 + ".Method2 " +
               "was called with message: \"" + message + "\"")
         return "Test said: \"" + message + "\""
+
+    @dbus.service.method(dbus.PROPERTIES_IFACE,
+                         in_signature="s", out_signature="a{sv}")
+    def GetAll(self, iface):
+        debug(dbus.PROPERTIES_IFACE + "." + "GetAll " +
+              "was called with argument \"" + iface + "\"")
+        return self.__properties
 
 
 def debug(message):
