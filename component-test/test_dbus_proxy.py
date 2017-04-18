@@ -816,6 +816,102 @@ class TestProxyBehaviorForOrgFreedesktopPropertiesIface(object):
         and these tests assert that the behavior is as expected.
     """
 
+    def test_properties_from_disallowed_iface_leaks_from_allowed_iface(self,
+                                                                       session_bus,
+                                                                       service_on_outside,
+                                                                       dbus_proxy):
+        """ Assert that the proxy allows GetAll(X) to return properties for
+            interface X even if that interface is not allowed by the config.
+
+            Although it's service implementation specific, it's a common
+            behavior for services to respect the interface argument passed
+            to e.g. GetAll, and return properties based on that.
+
+            dbus-proxy will not block this in any way, i.e. it can't
+            inspect the argument to e.g. GetAll and correlate it to the
+            configuration.
+
+            So in practice, dbus-proxy has a behavior that might be
+            unexpected and can be considered an information leak. The
+            purpose of this test is to pinpoint this behavior since there
+            has been discussions about the current behavior with regards
+            to this.
+
+            The test helper service has properties for both
+            "TestInterface1_1" and "TestInterface1_1_2". This test
+            uses a config that allows GetAll on Object1 and TestInterface1_1,
+            but disallowes TestInterface1_1_2 and then asserts that it can
+            also get properties when using the disallowed interface as
+            argument to GetAll.
+        """
+        # Config allows one of the interfaces on an object as well as
+        # the properties interface.
+        config = """
+        {{
+            "dbus-gateway-config-session": [{{
+                "direction": "outgoing",
+                "interface": "{props_iface}",
+                "object-path": "{opath_1}",
+                "method": "GetAll"
+            }},
+            {{
+                "direction": "outgoing",
+                "interface": "{iface1_1}",
+                "object-path": "{opath_1}",
+                "method": ""
+            }}],
+            "dbus-gateway-config-system": []
+        }}
+        """.format(**{
+            "props_iface": dbus.PROPERTIES_IFACE,
+            "opath_1": stubs.OPATH_1,
+            "iface1_1": stubs.TestInterface1_1
+        })
+
+        dbus_proxy.set_config(config)
+
+        # Assert the interface, that we later get properties from, is
+        # otherwise not allowed to be reached by the proxy.
+        dbus_send_command = [
+            "dbus-send",
+            "--address=" + dbus_proxy.INSIDE_SOCKET,
+            "--print-reply",
+            "--dest=" + stubs.BUS_NAME,
+            stubs.OPATH_1,
+            stubs.TestInterface1_1_2 + "." + stubs.METHOD_2,
+            'string:"My unique key"']
+
+        environment = environ.copy()
+        dbus_send_process = Popen(dbus_send_command,
+                                  env=environment,
+                                  stdout=PIPE)
+        captured_stdout = dbus_send_process.communicate()[0]
+
+        assert "My unique key" not in captured_stdout
+
+        # This will call GetAll and the argument is an interface
+        # which is not allowed by the config.
+        dbus_send_command = [
+            "dbus-send",
+            "--address=" + dbus_proxy.INSIDE_SOCKET,
+            "--print-reply",
+            "--dest=" + stubs.BUS_NAME,
+            stubs.OPATH_1,
+            dbus.PROPERTIES_IFACE + ".GetAll",
+            "string:" + stubs.TestInterface1_1_2]
+
+        environment = environ.copy()
+        dbus_send_process = Popen(dbus_send_command,
+                                  env=environment,
+                                  stdout=PIPE)
+        captured_stdout = dbus_send_process.communicate()[0]
+
+        # It's expected that a property value associated with the
+        # disallowed interface is seen in the result from GetAll
+        expected_value = stubs.PROP_VALUE_2 + stubs.TestInterface1_1_2
+
+        assert expected_value in captured_stdout
+
     def test_getting_properties_when_GetAll_is_disallowed_fails(self,
                                                                 session_bus,
                                                                 service_on_outside,
@@ -885,7 +981,7 @@ class TestProxyBehaviorForOrgFreedesktopPropertiesIface(object):
             "--dest=" + stubs.BUS_NAME,
             stubs.OPATH_1,
             dbus.PROPERTIES_IFACE + ".GetAll",
-            'string:"org.doesnotmatter"']
+            "string:" + stubs.TestInterface1_1]
 
         environment = environ.copy()
         dbus_send_process = Popen(dbus_send_command,
@@ -893,7 +989,9 @@ class TestProxyBehaviorForOrgFreedesktopPropertiesIface(object):
                                   stdout=PIPE)
         captured_stdout = dbus_send_process.communicate()[0]
 
-        assert "my_value_2" in captured_stdout
+        expected_value = stubs.PROP_VALUE_2 + stubs.TestInterface1_1
+
+        assert expected_value in captured_stdout
 
         dbus_send_command = [
             "dbus-send",
