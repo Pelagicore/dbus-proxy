@@ -44,6 +44,9 @@ DBusGMainLoop(set_as_default=True)
     The interfaces are built up in three parts in order to verify subsets.
     There are two methods on each interface.
 
+    Object1 also implements GetAll and Get on the "org.freedesktop.DBus.Properties"
+    interface. Object2 implements GetAll on the same interface.
+
     On the bus it all looks like this:
 
     /Object1
@@ -51,14 +54,23 @@ DBusGMainLoop(set_as_default=True)
             Method1
         com.service.TestInterface1._1._2
             Method2
+        com.freedesktop.DBus.Properties
+            GetAll
+            Get
     /Object2
         com.service.TestInterface2._1
             Method1
         com.service.TestInterface2._1._2
             Method2
+        org.freedesktop.DBus.Properties
+            GetAll
 
-    Object1 also implements GetAll and Get on the "org.freedesktop.DBus.Properties"
-    interface. Object2 implements GetAll on the same interface.
+    Object1 will return properties based on the interface argument passed
+    to GetAll. This is to mimic a typical service that respects the argument
+    and returns properties based on it. This behavior is used by
+    component tests to assert the behavior of dbus-proxy when used in this
+    context. E.g dbus-proxy will not disallow properties on interface X
+    even if interface X is disallowed in the proxy config.
 """
 
 DEBUG = False
@@ -91,6 +103,18 @@ EXT_2 = "_2"
 METHOD_1 = "Method1"
 METHOD_2 = "Method2"
 
+TestInterface1_1 = IFACE_1 + "." + EXT_1
+TestInterface1_1_2 = IFACE_1 + "." + EXT_1 + "." + EXT_2
+
+TestInterface2_1 = IFACE_2 + "." + EXT_1
+TestInterface2_1_2 = IFACE_2 + "." + EXT_1 + "." + EXT_2
+
+PROP_KEY_1 = "MyKey1."
+PROP_VALUE_1 = "my_value_1."
+
+PROP_KEY_2 = "MyKey2."
+PROP_VALUE_2 = "my_value_2."
+
 
 class TestService1(dbus.service.Object):
     """This D-Bus service exposes multiple interfaces on one
@@ -103,19 +127,23 @@ class TestService1(dbus.service.Object):
 
         # Some nonsensical properties so there is something to return
         # from GetAll
-        self.__properties = {"MyKey1": "my_value_1", "MyKey2": "my_value_2"}
+        self.__properties = dict()
+        ifaces = [TestInterface1_1, TestInterface1_1_2]
+        for iface in ifaces:
+            self.__properties[iface] = {PROP_KEY_1 + iface: PROP_VALUE_1 + iface,
+                                        PROP_KEY_2 + iface: PROP_VALUE_2 + iface}
 
-    @dbus.service.method(IFACE_1 + "." + EXT_1,
+    @dbus.service.method(TestInterface1_1,
                          in_signature="s", out_signature="s")
     def Method1(self, message):
-        debug(IFACE_1 + "." + EXT_1 + ".Method1 " +
+        debug(TestInterface1_1 + ".Method1 " +
               "was called with message: \"" + message + "\"")
         return "Test said: \"" + message + "\""
 
-    @dbus.service.method(IFACE_1 + "." + EXT_1 + "." + EXT_2,
+    @dbus.service.method(TestInterface1_1_2,
                          in_signature="s", out_signature="s")
     def Method2(self, message):
-        debug(IFACE_1 + "." + EXT_1 + "." + EXT_2 + ".Method2 " +
+        debug(TestInterface1_1_2 + ".Method2 " +
               "was called with message: \"" + message + "\"")
         return "Test said: \"" + message + "\""
 
@@ -131,7 +159,14 @@ class TestService1(dbus.service.Object):
     def GetAll(self, iface):
         debug(dbus.PROPERTIES_IFACE + "." + "GetAll " +
               "was called with argument \"" + iface + "\"")
-        return self.__properties
+
+        if self.__properties.has_key(iface):
+            debug("Found interface " + iface + " on this object")
+            debug("Will return properties:")
+            debug(self.__properties[iface])
+            return self.__properties[iface]
+
+        return {"error": "error"}
 
 
 class TestService2(dbus.service.Object):
@@ -147,17 +182,17 @@ class TestService2(dbus.service.Object):
         # from GetAll
         self.__properties = {"MyKey1": "my_value_1", "MyKey2": "my_value_2"}
 
-    @dbus.service.method(IFACE_2 + "." + EXT_1,
+    @dbus.service.method(TestInterface2_1,
                          in_signature="s", out_signature="s")
     def Method1(self, message):
         debug(IFACE_2 + "." + EXT_1 + ".Method1 " +
               "was called with message: \"" + message + "\"")
         return "Test said: \"" + message + "\""
 
-    @dbus.service.method(IFACE_2 + "." + EXT_1 + "." + EXT_2,
+    @dbus.service.method(TestInterface2_1_2,
                          in_signature="s", out_signature="s")
     def Method2(self, message):
-        debug(IFACE_2 + "." + EXT_1 + "." + EXT_2 + ".Method2 " +
+        debug(TestInterface2_1_2 + ".Method2 " +
               "was called with message: \"" + message + "\"")
         return "Test said: \"" + message + "\""
 
