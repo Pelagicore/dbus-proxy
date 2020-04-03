@@ -98,13 +98,17 @@ DBusHandlerResult filter_cb (DBusConnection *conn,
 
     /* Handle Hello */
     if (dbus_message_get_type (msg) ==
-                    DBUS_MESSAGE_TYPE_METHOD_CALL         &&
+                    DBUS_MESSAGE_TYPE_METHOD_CALL             &&
+                    dbus_message_get_path(msg) != NULL        &&
                     strcmp (dbus_message_get_path(msg),
-                            "/org/freedesktop/DBus") == 0 &&
+                            "/org/freedesktop/DBus") == 0     &&
+                    dbus_message_get_interface(msg) != NULL   &&
                     strcmp (dbus_message_get_interface(msg),
-                            "org.freedesktop.DBus")  == 0 &&
+                            "org.freedesktop.DBus")  == 0     &&
+                    dbus_message_get_destination(msg) != NULL &&
                     strcmp (dbus_message_get_destination(msg),
-                            "org.freedesktop.DBus")  == 0 &&
+                            "org.freedesktop.DBus")  == 0     &&
+                    dbus_message_get_member(msg) != NULL      &&
                     strcmp (dbus_message_get_member (msg), "Hello") == 0) {
 
               DBusMessage *welcome;
@@ -134,8 +138,10 @@ DBusHandlerResult filter_cb (DBusConnection *conn,
     /* Handle Disconnected */
     if (dbus_message_get_type(msg) ==
                 DBUS_MESSAGE_TYPE_SIGNAL                   &&
+                dbus_message_get_interface(msg) != NULL    &&
                 strcmp (dbus_message_get_interface (msg),
                         "org.freedesktop.DBus.Local") == 0 &&
+                dbus_message_get_member(msg) != NULL       &&
                 strcmp (dbus_message_get_member (msg),
                         "Disconnected")               == 0) {
 
@@ -152,18 +158,10 @@ DBusHandlerResult filter_cb (DBusConnection *conn,
     }
 
     /* Forward */
-    if (dbus_message_get_interface (msg) == NULL ||
-                     strcmp (dbus_message_get_interface(msg),
-                         "org.freedesktop.DBus") == 0)
-    {
-        dbus_connection_send(
-                        dbus_g_connection_get_connection(master_conn),
-                        msg,
-                        &serial);
-    } else if (is_allowed("outgoing",
-                          dbus_message_get_interface (msg),
-                          dbus_message_get_path      (msg),
-                          dbus_message_get_member    (msg)))
+    if (is_allowed("outgoing",
+                   dbus_message_get_interface (msg),
+                   dbus_message_get_path      (msg),
+                   dbus_message_get_member    (msg)))
     {
         g_message("Accepted call to '%s' from client to '%s' on '%s'.\n",
                   dbus_message_get_member   (msg),
@@ -477,7 +475,8 @@ gboolean is_incoming_eavesdropping (DBusMessage *msg)
                                DBUS_TYPE_STRING,
                                &msg_arguments);
 
-        if (strstr(msg_arguments, "eavesdrop=true") != NULL)
+        if (strstr(msg_arguments, "eavesdrop=true") != NULL ||
+            strstr(msg_arguments, "eavesdrop='true'") != NULL)
         {
             is_eavesdropping = TRUE;
             if (verbose)
